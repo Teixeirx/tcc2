@@ -1,6 +1,6 @@
 # Relatório Técnico — CriptoIA (TCC II)
 
-**Data do registro:** 06/11/2026  
+**Data do registro:** 06/11/2026
 **Escopo:** correção dos gaps identificados na auditoria, implementação dos módulos de backtesting/comparação, backtesting multimodal real do Gemini, complemento exploratório intraday, testes CT01–CT06, interface web segura e geração dos resultados experimentais reais.
 
 ---
@@ -30,33 +30,33 @@ Foram implementados e executados:
 
 ### 2.1 Alterados
 
-| Arquivo | Alteração |
-|---|---|
-| `CriptoIa/backend/analise_tecnica.py` | Adicionado `MINIMO_CANDLES_INDICADORES = 50`; `enriquecer_dataframe()` rejeita amostras menores com `ValueError`. |
-| `CriptoIa/backend/coleta_dados.py` | Detecção de chaves placeholder/curtas para usar modo público da Binance. |
-| `CriptoIa/backend/analisador_ia.py` | Validação de todos os campos obrigatórios, normalização de ação inválida, prompt com o par correto e fallback `MANTER` para chave ausente, JSON inválido, timeout e falhas de API. Modelo configurável por `MODELO_GEMINI`; correção do `import time` usado no retry de 503. |
-| `CriptoIa/frontend/gerador_dashboard.py` | `gerar_dashboard()` aceita `caminho_saida`; Plotly configurável (`include_plotlyjs`). |
-| `CriptoIa/principal.py` | Novos modos CLI `--backtesting`, `--backtesting-gemini`, `--comparacao`, `--multiplos`, `--grade`; opções de data, workers, amostragem e LSTM; fallback estruturado; envio do par ao Gemini. |
-| `CriptoIa/requisitos.txt` | Versões fixadas; inclusão de `torch`, `numpy` e `Flask`. |
-| `README.md` | Documentação reescrita para TCC II, com instalação, comandos, metodologia, resultados, testes, segurança e limitações. |
+| Arquivo                                    | Alteração                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CriptoIa/backend/analise_tecnica.py`    | Adicionado `MINIMO_CANDLES_INDICADORES = 50`; `enriquecer_dataframe()` rejeita amostras menores com `ValueError`.                                                                                                                                                                        |
+| `CriptoIa/backend/coleta_dados.py`       | Detecção de chaves placeholder/curtas para usar modo público da Binance.                                                                                                                                                                                                                    |
+| `CriptoIa/backend/analisador_ia.py`      | Validação de todos os campos obrigatórios, normalização de ação inválida, prompt com o par correto e fallback `MANTER` para chave ausente, JSON inválido, timeout e falhas de API. Modelo configurável por `MODELO_GEMINI`; correção do `import time` usado no retry de 503. |
+| `CriptoIa/frontend/gerador_dashboard.py` | `gerar_dashboard()` aceita `caminho_saida`; Plotly configurável (`include_plotlyjs`).                                                                                                                                                                                                   |
+| `CriptoIa/principal.py`                  | Novos modos CLI `--backtesting`, `--backtesting-gemini`, `--comparacao`, `--multiplos`, `--grade`; opções de data, workers, amostragem e LSTM; fallback estruturado; envio do par ao Gemini.                                                                                       |
+| `CriptoIa/requisitos.txt`                | Versões fixadas; inclusão de `torch`, `numpy` e `Flask`.                                                                                                                                                                                                                               |
+| `README.md`                              | Documentação reescrita para TCC II, com instalação, comandos, metodologia, resultados, testes, segurança e limitações.                                                                                                                                                                  |
 
 ### 2.2 Criados
 
-| Arquivo | Finalidade |
-|---|---|
-| `CriptoIa/backend/backtesting.py` | Coleta paginada, sinais, métricas anti look-ahead, execução paralela, critérios, JSON/CSV e relatório (Experimento 1). |
+| Arquivo                                    | Finalidade                                                                                                                                                                                                             |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CriptoIa/backend/backtesting.py`        | Coleta paginada, sinais, métricas anti look-ahead, execução paralela, critérios, JSON/CSV e relatório (Experimento 1).                                                                                            |
 | `CriptoIa/backend/backtesting_gemini.py` | Backtesting multimodal real do Gemini: amostragem configurável, janela de 90 candles, parser de `tempo_estimado`/`preco_alvo`, cache atômico, Buy-and-Hold na mesma janela e relatórios dos Experimentos 2 e 3. |
-| `CriptoIa/backend/comparacao.py` | Buy-and-Hold, features/target, LSTM PyTorch, walk-forward, janela comum, exportação e relatório. |
-| `CriptoIa/backend/multiplos_ativos.py` | Análise paralela de pares/timeframes, isolamento de erros, relatório consolidado e CSV. |
-| `CriptoIa/webapp/app.py` | Rotas Flask, CSRF, headers, rate limit de login, validações, histórico e grade TCC. |
-| `CriptoIa/webapp/auth.py` | Credenciais por ambiente, hash de senha e `login_required`. |
-| `CriptoIa/webapp/history_store.py` | Persistência JSON atômica, lock e limites de 100 análises/50 backtests. |
-| `CriptoIa/webapp/templates/*` | Login, dashboard, análise, histórico e backtesting com resultados reais dos Experimentos 1, 2 e 3. |
-| `CriptoIa/webapp/static/*` | Estilos da interface. |
-| `CriptoIa/tests/**` | CT01–CT06, testes de módulos, interface, histórico, backtesting, comparação, backtesting Gemini e integração. |
-| `CriptoIa/.env.example` | Placeholders de configuração e parâmetros do LSTM web. |
-| `.gitignore` | Ignora `.env`, `.venv`, caches, cobertura, artefatos locais e históricos pessoais. |
-| `CriptoIa/resultados/*` | Resultados reais, relatórios e resumos dos Experimentos 1, 2 e 3. |
+| `CriptoIa/backend/comparacao.py`         | Buy-and-Hold, features/target, LSTM PyTorch, walk-forward, janela comum, exportação e relatório.                                                                                                                    |
+| `CriptoIa/backend/multiplos_ativos.py`   | Análise paralela de pares/timeframes, isolamento de erros, relatório consolidado e CSV.                                                                                                                              |
+| `CriptoIa/webapp/app.py`                 | Rotas Flask, CSRF, headers, rate limit de login, validações, histórico e grade TCC.                                                                                                                                 |
+| `CriptoIa/webapp/auth.py`                | Credenciais por ambiente, hash de senha e `login_required`.                                                                                                                                                          |
+| `CriptoIa/webapp/history_store.py`       | Persistência JSON atômica, lock e limites de 100 análises/50 backtests.                                                                                                                                             |
+| `CriptoIa/webapp/templates/*`            | Login, dashboard, análise, histórico e backtesting com resultados reais dos Experimentos 1, 2 e 3.                                                                                                                   |
+| `CriptoIa/webapp/static/*`               | Estilos da interface.                                                                                                                                                                                                  |
+| `CriptoIa/tests/**`                      | CT01–CT06, testes de módulos, interface, histórico, backtesting, comparação, backtesting Gemini e integração.                                                                                                   |
+| `CriptoIa/.env.example`                  | Placeholders de configuração e parâmetros do LSTM web.                                                                                                                                                              |
+| `.gitignore`                             | Ignora `.env`, `.venv`, caches, cobertura, artefatos locais e históricos pessoais.                                                                                                                                |
+| `CriptoIa/resultados/*`                  | Resultados reais, relatórios e resumos dos Experimentos 1, 2 e 3.                                                                                                                                                     |
 
 ### 2.3 Segurança de segredo
 
@@ -78,11 +78,11 @@ Foram implementados e executados:
 Volumes coletados por par:
 
 | Timeframe | Candles |
-|---|---:|
-| 1h | 13.104 |
-| 4h | 3.276 |
-| 1d | 546 |
-| 1w | 78 |
+| --------- | ------: |
+| 1h        |  13.104 |
+| 4h        |   3.276 |
+| 1d        |     546 |
+| 1w        |      78 |
 
 Cobertura reportada: 100% do período estimado nas 16 combinações.
 
@@ -156,24 +156,24 @@ python principal.py --backtesting-gemini --grade `
 
 ### 4.1 Grade completa (proxy CriptoIA)
 
-| Par | TF | Acurácia | Retorno | Max. DD | Operações |
-|---|---|---:|---:|---:|---:|
-| BTC/USDT | 1h | 48.5% | −1.67% | −15.30% | 1.890 |
-| BTC/USDT | 4h | 49.0% | −4.72% | −16.54% | 464 |
-| BTC/USDT | 1d | 56.5% | +16.20% | −14.08% | 71 |
-| BTC/USDT | 1w | 33.3% | 0.00% | 0.00% | 5 |
-| ETH/USDT | 1h | 47.6% | −23.26% | −26.67% | 1.689 |
-| ETH/USDT | 4h | 47.9% | +5.96% | −17.69% | 422 |
-| ETH/USDT | 1d | 47.4% | −15.83% | −28.70% | 60 |
-| ETH/USDT | 1w | 50.0% | 0.00% | 0.00% | 3 |
-| SOL/USDT | 1h | 48.9% | −11.79% | −38.02% | 1.878 |
-| SOL/USDT | 4h | 47.6% | −1.10% | −28.14% | 456 |
-| SOL/USDT | 1d | 49.6% | −39.06% | −39.85% | 65 |
-| SOL/USDT | 1w | N/A | 0.00% | 0.00% | 0 |
-| DOGE/USDT | 1h | 48.8% | +1.78% | −34.10% | 1.828 |
-| DOGE/USDT | 4h | 46.7% | +11.55% | −30.48% | 466 |
-| DOGE/USDT | 1d | 55.2% | −5.08% | −41.04% | 80 |
-| DOGE/USDT | 1w | 33.3% | 0.00% | 0.00% | 2 |
+| Par       | TF | Acurácia |  Retorno |  Max. DD | Operações |
+| --------- | -- | --------: | -------: | -------: | ----------: |
+| BTC/USDT  | 1h |     48.5% |  −1.67% | −15.30% |       1.890 |
+| BTC/USDT  | 4h |     49.0% |  −4.72% | −16.54% |         464 |
+| BTC/USDT  | 1d |     56.5% |  +16.20% | −14.08% |          71 |
+| BTC/USDT  | 1w |     33.3% |    0.00% |    0.00% |           5 |
+| ETH/USDT  | 1h |     47.6% | −23.26% | −26.67% |       1.689 |
+| ETH/USDT  | 4h |     47.9% |   +5.96% | −17.69% |         422 |
+| ETH/USDT  | 1d |     47.4% | −15.83% | −28.70% |          60 |
+| ETH/USDT  | 1w |     50.0% |    0.00% |    0.00% |           3 |
+| SOL/USDT  | 1h |     48.9% | −11.79% | −38.02% |       1.878 |
+| SOL/USDT  | 4h |     47.6% |  −1.10% | −28.14% |         456 |
+| SOL/USDT  | 1d |     49.6% | −39.06% | −39.85% |          65 |
+| SOL/USDT  | 1w |       N/A |    0.00% |    0.00% |           0 |
+| DOGE/USDT | 1h |     48.8% |   +1.78% | −34.10% |       1.828 |
+| DOGE/USDT | 4h |     46.7% |  +11.55% | −30.48% |         466 |
+| DOGE/USDT | 1d |     55.2% |  −5.08% | −41.04% |          80 |
+| DOGE/USDT | 1w |     33.3% |    0.00% |    0.00% |           2 |
 
 Observações:
 
@@ -185,10 +185,10 @@ Observações:
 
 O TCC1 define os critérios por ativo, mas não especifica o timeframe do resumo. Para não inventar esse parâmetro, o código preserva os 16 resultados brutos e adota o diário apenas como recorte operacional do resumo (`recorte_principal: "1d"`), explicitando essa escolha em `nota_timeframe`.
 
-| Critério | Resultado |
-|---|---|
+| Critério                                 | Resultado                                              |
+| ----------------------------------------- | ------------------------------------------------------ |
 | Acurácia > 50% em ≥ 3 dos 4 ativos (1d) | **Não atendido** — 2/4 (BTC 56.5%, DOGE 55.2%) |
-| Retorno não negativo | **Não atendido** — 1/4 (BTC +16.20%) |
+| Retorno não negativo                     | **Não atendido** — 1/4 (BTC +16.20%)           |
 
 A avaliação é da estratégia proxy de indicadores, não das respostas do Gemini.
 
@@ -196,20 +196,20 @@ A avaliação é da estratégia proxy de indicadores, não das respostas do Gemi
 
 Modelo `gemini-3.5-flash-lite`; 63 pontos por par; zero fallbacks na versão final. A janela efetiva começa em 2025-04-01 (após 90 candles de warm-up) e termina no último horizonte de cada par (2026-06-24 ou 2026-06-30).
 
-| Par | Amostras | Comp./Vend./Mant. | Acur. t+1 | Acur. prazo | Alvo | Retorno Gemini | Buy-and-Hold (mesma janela) | Concord. proxy |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| BTC/USDT | 63 | 38 / 7 / 18 | 48.9% | 62.2% | 39.5% | −30.97% | −31.16% | 42.9% |
-| ETH/USDT | 63 | 38 / 10 / 15 | 54.2% | 54.2% | 47.4% | −54.95% | −17.48% | 33.3% |
-| SOL/USDT | 63 | 39 / 9 / 15 | 54.2% | 60.4% | 48.7% | −64.07% | −46.23% | 31.7% |
-| DOGE/USDT | 63 | 43 / 6 / 14 | 51.0% | 49.0% | 32.6% | −57.46% | −56.25% | 25.4% |
+| Par       | Amostras | Comp./Vend./Mant. | Acur. t+1 | Acur. prazo |  Alvo | Retorno Gemini | Buy-and-Hold (mesma janela) | Concord. proxy |
+| --------- | -------: | ----------------: | --------: | ----------: | ----: | -------------: | --------------------------: | -------------: |
+| BTC/USDT  |       63 |       38 / 7 / 18 |     48.9% |       62.2% | 39.5% |       −30.97% |                    −31.16% |          42.9% |
+| ETH/USDT  |       63 |      38 / 10 / 15 |     54.2% |       54.2% | 47.4% |       −54.95% |                    −17.48% |          33.3% |
+| SOL/USDT  |       63 |       39 / 9 / 15 |     54.2% |       60.4% | 48.7% |       −64.07% |                    −46.23% |          31.7% |
+| DOGE/USDT |       63 |       43 / 6 / 14 |     51.0% |       49.0% | 32.6% |       −57.46% |                    −56.25% |          25.4% |
 
 Critérios do TCC1 no Experimento 2:
 
-| Critério | Resultado |
-|---|---|
+| Critério                                     | Resultado                                                               |
+| --------------------------------------------- | ----------------------------------------------------------------------- |
 | Acurácia de prazo > 50% em ≥ 3 dos 4 ativos | **Atendido** — 3/4 (BTC 62.2%, ETH 54.2%, SOL 60.4%; DOGE 49.0%) |
-| Retorno acumulado não negativo | **Não atendido** — 0/4 (todos negativos) |
-| Conjunto dos dois critérios | **Não atendido** |
+| Retorno acumulado não negativo               | **Não atendido** — 0/4 (todos negativos)                        |
+| Conjunto dos dois critérios                  | **Não atendido**                                                 |
 
 Leitura:
 
@@ -223,25 +223,25 @@ Leitura:
 
 Modelo `gemini-3.5-flash-lite`; 304 inferências (160 em `1h`, 144 em `4h`), zero fallbacks. Período de coleta: 01/07/2026 a 31/10/2026, com amostragem a cada 3 dias e 90 candles de contexto por decisão. A primeira decisão ocorre após o warm-up de 90 candles; em `1h`, isso corresponde a ≈04/07/2026, e em `4h`, a ≈16/07/2026.
 
-| TF | Par | Amostras | Comp./Vend./Mant. | Acur. t+1 | Acur. prazo | Alvo | Retorno Gemini | Buy-and-Hold (mesma janela) | Concord. proxy |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `1h` | BTC/USDT | 40 | 19 / 6 / 15 | 64.0% | 64.0% | 5.3% | −0.71% | +23.00% | 37.5% |
-| `1h` | ETH/USDT | 40 | 19 / 6 / 15 | 56.0% | 48.0% | 10.5% | −1.89% | +24.31% | 65.0% |
-| `1h` | SOL/USDT | 40 | 19 / 11 / 10 | 56.7% | 70.0% | 15.8% | +4.55% | +17.77% | 60.0% |
-| `1h` | DOGE/USDT | 40 | 15 / 3 / 22 | 66.7% | 61.1% | 0.0% | −0.81% | −4.62% | 45.0% |
-| `4h` | BTC/USDT | 36 | 17 / 5 / 14 | 45.5% | 59.1% | 29.4% | +5.35% | +20.12% | 41.7% |
-| `4h` | ETH/USDT | 36 | 17 / 4 / 15 | 61.9% | 57.1% | 41.2% | +11.22% | +17.31% | 55.6% |
-| `4h` | SOL/USDT | 36 | 19 / 8 / 9 | 37.0% | 55.6% | 10.5% | −2.08% | +24.73% | 50.0% |
-| `4h` | DOGE/USDT | 36 | 12 / 3 / 21 | 33.3% | 53.3% | 8.3% | −9.49% | +2.30% | 50.0% |
+| TF     | Par       | Amostras | Comp./Vend./Mant. | Acur. t+1 | Acur. prazo |  Alvo | Retorno Gemini | Buy-and-Hold (mesma janela) | Concord. proxy |
+| ------ | --------- | -------: | ----------------: | --------: | ----------: | ----: | -------------: | --------------------------: | -------------: |
+| `1h` | BTC/USDT  |       40 |       19 / 6 / 15 |     64.0% |       64.0% |  5.3% |        −0.71% |                     +23.00% |          37.5% |
+| `1h` | ETH/USDT  |       40 |       19 / 6 / 15 |     56.0% |       48.0% | 10.5% |        −1.89% |                     +24.31% |          65.0% |
+| `1h` | SOL/USDT  |       40 |      19 / 11 / 10 |     56.7% |       70.0% | 15.8% |         +4.55% |                     +17.77% |          60.0% |
+| `1h` | DOGE/USDT |       40 |       15 / 3 / 22 |     66.7% |       61.1% |  0.0% |        −0.81% |                     −4.62% |          45.0% |
+| `4h` | BTC/USDT  |       36 |       17 / 5 / 14 |     45.5% |       59.1% | 29.4% |         +5.35% |                     +20.12% |          41.7% |
+| `4h` | ETH/USDT  |       36 |       17 / 4 / 15 |     61.9% |       57.1% | 41.2% |        +11.22% |                     +17.31% |          55.6% |
+| `4h` | SOL/USDT  |       36 |        19 / 8 / 9 |     37.0% |       55.6% | 10.5% |        −2.08% |                     +24.73% |          50.0% |
+| `4h` | DOGE/USDT |       36 |       12 / 3 / 21 |     33.3% |       53.3% |  8.3% |        −9.49% |                      +2.30% |          50.0% |
 
 **Não confundir contagem de combinações com taxa de acerto.** O “7 de 8” significa 7 das 8 combinações par × timeframe; **não** significa 87,5% de acertos. Agregando todos os pontos direcionais, a acurácia de prazo é 108/183 = 59,0% (`1h`: 60/98 = 61,2%; `4h`: 48/85 = 56,5%) e a de `t+1` é 97/183 = 53,0%.
 
 Critérios do TCC1 no Experimento 3:
 
-| Timeframe | Acurácia de prazo > 50% | Retorno não negativo | Conjunto |
-|---|---|---|---|
-| `1h` | **Atendido** — 3/4 (BTC, SOL, DOGE) | **Não atendido** — 1/4 (SOL +4.55%) | **Não atendido** |
-| `4h` | **Atendido** — 4/4 | **Não atendido** — 2/4 (BTC +5.35%, ETH +11.22%) | **Não atendido** |
+| Timeframe | Acurácia de prazo > 50%                   | Retorno não negativo                                    | Conjunto                |
+| --------- | ------------------------------------------ | -------------------------------------------------------- | ----------------------- |
+| `1h`    | **Atendido** — 3/4 (BTC, SOL, DOGE) | **Não atendido** — 1/4 (SOL +4.55%)              | **Não atendido** |
+| `4h`    | **Atendido** — 4/4                  | **Não atendido** — 2/4 (BTC +5.35%, ETH +11.22%) | **Não atendido** |
 
 Leitura:
 
@@ -258,33 +258,33 @@ Leitura:
 
 ### 5.1 Janela comum — timeframe diário
 
-| Par | CriptoIA retorno / acurácia | Buy-and-Hold | LSTM retorno / acurácia | Baseline LSTM |
-|---|---:|---:|---:|---:|
-| BTC/USDT | +1.28% / 54.0% | −35.03% | −25.37% / 52.3% | 53.8% |
-| ETH/USDT | +2.25% / 46.5% | −49.53% | −48.59% / 46.7% | 53.8% |
-| SOL/USDT | −14.05% / 43.3% | −44.67% | −34.11% / 47.2% | 54.8% |
-| DOGE/USDT | +15.26% / 56.4% | −48.16% | −5.27% / 55.8% | 59.3% |
+| Par       | CriptoIA retorno / acurácia | Buy-and-Hold | LSTM retorno / acurácia | Baseline LSTM |
+| --------- | ---------------------------: | -----------: | -----------------------: | ------------: |
+| BTC/USDT  |               +1.28% / 54.0% |     −35.03% |         −25.37% / 52.3% |         53.8% |
+| ETH/USDT  |               +2.25% / 46.5% |     −49.53% |         −48.59% / 46.7% |         53.8% |
+| SOL/USDT  |             −14.05% / 43.3% |     −44.67% |         −34.11% / 47.2% |         54.8% |
+| DOGE/USDT |              +15.26% / 56.4% |     −48.16% |          −5.27% / 55.8% |         59.3% |
 
 ### 5.2 Grade completa — janela comum
 
-| Par | TF | CriptoIA ret. | CriptoIA acur. | B&H ret. | LSTM ret. | LSTM acur. | Baseline |
-|---|---|---:|---:|---:|---:|---:|---:|
-| BTC/USDT | 1h | −3.37% | 48.2% | −32.79% | −21.49% | 51.8% | 50.4% |
-| BTC/USDT | 4h | −0.32% | 48.8% | −35.95% | −25.61% | 50.4% | 50.0% |
-| BTC/USDT | 1d | +1.28% | 54.0% | −35.03% | −25.37% | 52.3% | 53.8% |
-| BTC/USDT | 1w | 0.00% | 0.0% | −10.02% | −13.33% | 33.3% | 58.3% |
-| ETH/USDT | 1h | −12.73% | 48.8% | −45.64% | −48.61% | 51.2% | 50.4% |
-| ETH/USDT | 4h | −1.96% | 47.7% | −48.15% | −23.99% | 51.3% | 50.3% |
-| ETH/USDT | 1d | +2.25% | 46.5% | −49.53% | −48.59% | 46.7% | 53.8% |
-| ETH/USDT | 1w | 0.00% | 66.7% | −18.52% | −18.52% | 41.7% | 58.3% |
-| SOL/USDT | 1h | +2.18% | 49.1% | −45.95% | −55.80% | 50.9% | 50.8% |
-| SOL/USDT | 4h | +1.82% | 47.5% | −48.39% | −24.27% | 48.9% | 51.0% |
-| SOL/USDT | 1d | −14.05% | 43.3% | −44.67% | −34.11% | 47.2% | 54.8% |
-| SOL/USDT | 1w | 0.00% | N/A | +0.07% | 0.00% | 41.7% | 58.3% |
-| DOGE/USDT | 1h | −13.73% | 47.2% | −51.50% | −54.66% | 51.1% | 51.2% |
-| DOGE/USDT | 4h | −7.15% | 44.3% | −53.18% | −15.73% | 51.2% | 52.6% |
-| DOGE/USDT | 1d | +15.26% | 56.4% | −48.16% | −5.27% | 55.8% | 59.3% |
-| DOGE/USDT | 1w | 0.00% | N/A | −14.28% | +16.19% | 75.0% | 50.0% |
+| Par       | TF | CriptoIA ret. | CriptoIA acur. | B&H ret. | LSTM ret. | LSTM acur. | Baseline |
+| --------- | -- | ------------: | -------------: | -------: | --------: | ---------: | -------: |
+| BTC/USDT  | 1h |       −3.37% |          48.2% | −32.79% |  −21.49% |      51.8% |    50.4% |
+| BTC/USDT  | 4h |       −0.32% |          48.8% | −35.95% |  −25.61% |      50.4% |    50.0% |
+| BTC/USDT  | 1d |        +1.28% |          54.0% | −35.03% |  −25.37% |      52.3% |    53.8% |
+| BTC/USDT  | 1w |         0.00% |           0.0% | −10.02% |  −13.33% |      33.3% |    58.3% |
+| ETH/USDT  | 1h |      −12.73% |          48.8% | −45.64% |  −48.61% |      51.2% |    50.4% |
+| ETH/USDT  | 4h |       −1.96% |          47.7% | −48.15% |  −23.99% |      51.3% |    50.3% |
+| ETH/USDT  | 1d |        +2.25% |          46.5% | −49.53% |  −48.59% |      46.7% |    53.8% |
+| ETH/USDT  | 1w |         0.00% |          66.7% | −18.52% |  −18.52% |      41.7% |    58.3% |
+| SOL/USDT  | 1h |        +2.18% |          49.1% | −45.95% |  −55.80% |      50.9% |    50.8% |
+| SOL/USDT  | 4h |        +1.82% |          47.5% | −48.39% |  −24.27% |      48.9% |    51.0% |
+| SOL/USDT  | 1d |      −14.05% |          43.3% | −44.67% |  −34.11% |      47.2% |    54.8% |
+| SOL/USDT  | 1w |         0.00% |            N/A |   +0.07% |     0.00% |      41.7% |    58.3% |
+| DOGE/USDT | 1h |      −13.73% |          47.2% | −51.50% |  −54.66% |      51.1% |    51.2% |
+| DOGE/USDT | 4h |       −7.15% |          44.3% | −53.18% |  −15.73% |      51.2% |    52.6% |
+| DOGE/USDT | 1d |       +15.26% |          56.4% | −48.16% |   −5.27% |      55.8% |    59.3% |
+| DOGE/USDT | 1w |         0.00% |            N/A | −14.28% |   +16.19% |      75.0% |    50.0% |
 
 ### 5.3 Leitura dos resultados
 
@@ -339,34 +339,34 @@ python -m pytest --cov=backend --cov=frontend --cov=webapp `
 
 Cobertura por módulo:
 
-| Módulo | Cobertura |
-|---|---:|
-| `backend/analise_tecnica.py` | 100% |
-| `backend/gerador_grafico.py` | 100% |
-| `backend/multiplos_ativos.py` | 100% |
-| `frontend/gerador_dashboard.py` | 100% |
-| `backend/backtesting.py` | 93% |
-| `backend/backtesting_gemini.py` | 89% |
-| `backend/comparacao.py` | 94% |
-| `backend/analisador_ia.py` | 88% |
-| `webapp/history_store.py` | 96% |
-| `webapp/app.py` | 91% |
-| `backend/coleta_dados.py` | 80% |
-| `webapp/auth.py` | 75% |
-| **Total** | **92%** |
+| Módulo                           |     Cobertura |
+| --------------------------------- | ------------: |
+| `backend/analise_tecnica.py`    |          100% |
+| `backend/gerador_grafico.py`    |          100% |
+| `backend/multiplos_ativos.py`   |          100% |
+| `frontend/gerador_dashboard.py` |          100% |
+| `backend/backtesting.py`        |           93% |
+| `backend/backtesting_gemini.py` |           89% |
+| `backend/comparacao.py`         |           94% |
+| `backend/analisador_ia.py`      |           88% |
+| `webapp/history_store.py`       |           96% |
+| `webapp/app.py`                 |           91% |
+| `backend/coleta_dados.py`       |           80% |
+| `webapp/auth.py`                |           75% |
+| **Total**                   | **92%** |
 
 Relatórios gerados localmente: `coverage/coverage_report.txt`, `coverage/coverage.xml` e `coverage/html/index.html` (ignorados pelo Git).
 
 ### 6.3 CT01–CT06
 
-| Caso | Testes |
-|---|---|
-| CT01 — coleta | quantidade/colunas, ausência de nulos, falha de conexão descritiva, modo público. |
-| CT02 — indicadores | colunas obrigatórias, RSI 0–100, Bollinger superior > inferior, rejeição de < 50 candles. |
-| CT03 — gráfico | PNG gerado, tamanho, conteúdo/título e eixo. |
-| CT04 — Gemini | campos obrigatórios, ação válida, JSON inválido, campo ausente, ação inválida, chave ausente e fallback `MANTER`. |
-| CT05 — dashboard | HTML gerado, conteúdo, Plotly, indicadores e abertura no navegador com mock. |
-| CT06 — falhas | falha de API, timeout, JSON inválido, coleta e fallback estruturado sem traceback; integração CLI e web. |
+| Caso                | Testes                                                                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| CT01 — coleta      | quantidade/colunas, ausência de nulos, falha de conexão descritiva, modo público.                                        |
+| CT02 — indicadores | colunas obrigatórias, RSI 0–100, Bollinger superior > inferior, rejeição de < 50 candles.                               |
+| CT03 — gráfico    | PNG gerado, tamanho, conteúdo/título e eixo.                                                                              |
+| CT04 — Gemini      | campos obrigatórios, ação válida, JSON inválido, campo ausente, ação inválida, chave ausente e fallback `MANTER`. |
+| CT05 — dashboard   | HTML gerado, conteúdo, Plotly, indicadores e abertura no navegador com mock.                                               |
+| CT06 — falhas      | falha de API, timeout, JSON inválido, coleta e fallback estruturado sem traceback; integração CLI e web.                 |
 
 Além dos CT01–CT06, a suíte cobre o backtesting Gemini: parsers de `tempo_estimado` e `preco_alvo`, cache atômico e corrompido, sinal proxy, dados insuficientes, Buy-and-Hold na mesma janela, execução da grade e renderização dos experimentos oficial (`1d`) e exploratório (`1h`/`4h`) na interface web.
 
@@ -440,8 +440,8 @@ O smoke test usou credenciais temporárias via variáveis de ambiente. O `.env` 
 ## 9. Pendências e próximos passos
 
 - [ ] Rotacionar chaves da Binance/Gemini expostas em commits anteriores.
-- [x] Executar replay amostral real do Gemini (Experimento 2, 1d, 252 inferências, zero fallbacks).
-- [x] Executar o Experimento 3 exploratório (`1h`/`4h`, jul–out/2026, passo de 3 dias, 304 inferências, zero fallbacks); o `1w` permanece fora do replay real por falta de histórico suficiente.
+- [X] Executar replay amostral real do Gemini (Experimento 2, 1d, 252 inferências, zero fallbacks).
+- [X] Executar o Experimento 3 exploratório (`1h`/`4h`, jul–out/2026, passo de 3 dias, 304 inferências, zero fallbacks); o `1w` permanece fora do replay real por falta de histórico suficiente.
 - [ ] Implementar curva de capital sem sobreposição de horizontes para os Experimentos 2 e 3.
 - [ ] Adicionar custos de transação e permitir posições vendidas/short.
 - [ ] Executar múltiplas seeds/configurações de LSTM e reportar média/desvio.
