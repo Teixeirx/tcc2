@@ -1,4 +1,4 @@
-# ── Python ────────────────────────────────────────────────────────────────────
+# ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyo
@@ -13,7 +13,7 @@ coverage_html/
 venv/
 env/
 
-# ── Segredos e configuração local ──────────────────────────────────────────────
+# ── Segredos e configuração local ─────────────────────────────────────────────
 .env
 .env.*
 !.env.example
@@ -21,7 +21,7 @@ CriptoIa/.env
 CriptoIa/.env.*
 !CriptoIa/.env.example
 
-# ── Artefatos gerados localmente ───────────────────────────────────────────────
+# ── Artefatos gerados localmente ──────────────────────────────────────────────
 CriptoIa/resultados/dashboard.html
 CriptoIa/resultados/grafico_bitcoin.png
 CriptoIa/grafico_*.png
