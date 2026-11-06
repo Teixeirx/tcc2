@@ -10,7 +10,7 @@ Credenciais:
       usa uma senha padrão apenas para facilitar a execução local)
 
 Em produção (CRIPTOIA_ENV=production), a ausência de WEB_ADMIN_PASS
-interrompe a inicialização em vez de usar credenciais conhecidas.
+interrompe a inicialização em vez de usar credenciais conhecidas
 """
 
 import os
