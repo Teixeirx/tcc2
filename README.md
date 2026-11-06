@@ -302,7 +302,7 @@ Os números do Experimento 1 são da estratégia proxy, **não** das respostas d
 | SOL/USDT | 49.6% | −39.06% | −39.85% | 65 |
 | DOGE/USDT | 55.2% | −5.08% | −41.04% | 80 |
 
-A tabela completa (16 combinações, incluindo 1h/4h/1w) está em `resultados/backtesting_resumo.txt` e `resultados/backtesting_tcc.json`. Todas as 16 coletas tiveram cobertura de 100% do período estimado.
+A tabela completa (16 combinações, incluindo 1h/4h/1w) está em `resultados/backtesting_resumo.txt` e `resultados/backtesting_tcc.json`. Todas as 16 coletas tiveram cobertura de 100% do período estimado
 
 ### 6.2 Experimento 1 — comparação na janela comum (timeframe diário)
 
