@@ -1,0 +1,2 @@
+﻿par,intervalo,erro,n_candles,n_candles_validos,n_sinais_compra,n_sinais_venda,n_sinais_manter,acuracia_direcional,retorno_total_pct,max_drawdown_pct,n_operacoes,n_entradas,cobertura_solicitada_pct,primeiro_candle,ultimo_candle
+BTC/USDT,1d,,546,496,55,53,388,0.5648,16.2,-14.08,71,18,100.0,2025-01-01T00:00:00+00:00,2026-06-30T00:00:00+00:00

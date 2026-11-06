@@ -1,0 +1,31 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+coverage_report.txt
+htmlcov/
+coverage_html/
+.venv/
+venv/
+env/
+
+# ── Segredos e configuração local ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+CriptoIa/.env
+CriptoIa/.env.*
+!CriptoIa/.env.example
+
+# ── Artefatos gerados localmente ───────────────────────────────────────────────
+CriptoIa/resultados/dashboard.html
+CriptoIa/resultados/grafico_bitcoin.png
+CriptoIa/grafico_*.png
+CriptoIa/resultados/relatorio_multiplos.csv
+CriptoIa/webapp/historico_analises.json
+CriptoIa/webapp/historico_backtest.json
+CriptoIa/resultados/fallback_analise.json

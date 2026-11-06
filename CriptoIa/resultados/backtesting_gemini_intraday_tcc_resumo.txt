@@ -1,0 +1,17 @@
+RESUMO DO BACKTESTING MULTIMODAL REAL — GOOGLE GEMINI (TCC II)
+=========================================================================================================
+Modelo: gemini-3.5-flash-lite | Período: 2026-07-01 a 2026-10-31 | Timeframe(s): 1h, 4h | Escopo: exploratorio
+---------------------------------------------------------------------------------------------------------
+TF   Par        Amostras  Comp  Vend  Mant  Acur.t+1%  Acur.Prazo%  Alvo.Hit%   Retorno%      B&H%  Proxy.Conc%
+---------------------------------------------------------------------------------------------------------
+1h   BTC/USDT         40    19     6    15      64.0%        64.0%       5.3%     -0.71%   +23.00%        37.5%
+1h   ETH/USDT         40    19     6    15      56.0%        48.0%      10.5%     -1.89%   +24.31%        65.0%
+1h   SOL/USDT         40    19    11    10      56.7%        70.0%      15.8%     +4.55%   +17.77%        60.0%
+1h   DOGE/USDT        40    15     3    22      66.7%        61.1%       0.0%     -0.81%    -4.62%        45.0%
+4h   BTC/USDT         36    17     5    14      45.5%        59.1%      29.4%     +5.35%   +20.12%        41.7%
+4h   ETH/USDT         36    17     4    15      61.9%        57.1%      41.2%    +11.22%   +17.31%        55.6%
+4h   SOL/USDT         36    19     8     9      37.0%        55.6%      10.5%     -2.08%   +24.73%        50.0%
+4h   DOGE/USDT        36    12     3    21      33.3%        53.3%       8.3%     -9.49%    +2.30%        50.0%
+=========================================================================================================
+Nota: B&H = Buy-and-Hold na mesma janela efetiva do experimento. Retorno Gemini composto por decisao amostral; horizontes podem se sobrepor.
+Nota: Experimento exploratório com período reduzido; complementa, mas não substitui o Experimento 2 oficial de 18 meses em 1d.

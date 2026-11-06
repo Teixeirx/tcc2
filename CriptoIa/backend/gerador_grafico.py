@@ -6,6 +6,8 @@ volume e Bandas de Bollinger usando mplfinance e matplotlib.
 O gráfico é salvo como PNG para ser enviado ao modelo Gemini.
 """
 
+import os
+
 import matplotlib
 matplotlib.use("Agg")  # Backend sem interface gráfica (headless)
 
@@ -28,10 +30,13 @@ COR_BOLLINGER = "#8b949e" # Cinza para Bandas de Bollinger
 COR_VOLUME = "#388bfd"   # Azul para volume
 COR_RSI = "#d2a8ff"      # Roxo para RSI
 
+# Diretório raiz do projeto (CriptoIa/)
+_DIR_RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 def gerar_grafico_candlestick(
     df: pd.DataFrame,
-    nome_arquivo: str = "grafico_bitcoin.png",
+    nome_arquivo: str = os.path.join(_DIR_RAIZ, "resultados", "grafico_bitcoin.png"),
     titulo: str = "Bitcoin (BTC/USDT) — Análise Técnica"
 ) -> str:
     """

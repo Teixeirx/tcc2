@@ -1,0 +1,255 @@
+================================================================================
+  RELATÓRIO COMPARATIVO DE ESTRATÉGIAS — CriptoIA
+  Gerado em: 23/10/2026 00:51:57
+================================================================================
+
+ESTRATÉGIAS COMPARADAS:
+  1. CriptoIA      : Sinais determinísticos por indicadores (proxy)
+  2. Buy-and-Hold  : Manter o ativo durante todo o período
+  3. LSTM          : Rede LSTM PyTorch com walk-forward
+
+METODOLOGIA:
+  - Janela comum = últimos 40% dos dados (out-of-sample do LSTM)
+  - LSTM re-treinado periodicamente apenas com dados passados
+  - Retorno do LSTM usa o retorno FUTURO (t+1), sem look-ahead
+  - Sem custos de transação
+
+──────────────────────────────────────────────────────────────────────
+  BTC/USDT | 1h | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-11-25T09:00:00+00:00 -> 2026-06-30T22:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)              -3.37          48.2      -10.3
+  Buy-and-Hold                 -32.79           N/A     -40.31
+  Supervisionado (LSTM)        -21.49          51.8     -31.44
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=-1.67% | acurácia=48.5%
+  Buy-and-Hold           retorno=-37.9% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-21.49% | acurácia=0.5184 | baseline=0.5042 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  BTC/USDT | 4h | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-11-27T16:00:00+00:00 -> 2026-06-30T16:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)              -0.32          48.8     -11.54
+  Buy-and-Hold                 -35.95           N/A     -39.98
+  Supervisionado (LSTM)        -25.61          50.4     -33.07
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=-4.72% | acurácia=49.0%
+  Buy-and-Hold           retorno=-37.53% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-25.61% | acurácia=0.5043 | baseline=0.5004 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  BTC/USDT | 1d | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-12-13T00:00:00+00:00 -> 2026-06-29T00:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)               1.28          54.0     -14.08
+  Buy-and-Hold                 -35.03           N/A     -39.53
+  Supervisionado (LSTM)        -25.37          52.3     -39.54
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=16.2% | acurácia=56.5%
+  Buy-and-Hold           retorno=-38.02% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-25.37% | acurácia=0.5226 | baseline=0.5377 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  BTC/USDT | 1w | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2026-04-06T00:00:00+00:00 -> 2026-06-22T00:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)                0.0           0.0        0.0
+  Buy-and-Hold                 -10.02           N/A     -27.53
+  Supervisionado (LSTM)        -13.33          33.3     -30.19
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=0.0% | acurácia=33.3%
+  Buy-and-Hold           retorno=-32.68% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-13.33% | acurácia=0.3333 | baseline=0.5833 | seq_len=7 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  ETH/USDT | 1h | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-11-25T09:00:00+00:00 -> 2026-06-30T22:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)             -12.73          48.8     -15.15
+  Buy-and-Hold                 -45.64           N/A      -55.1
+  Supervisionado (LSTM)        -48.61          51.2     -57.97
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=-23.26% | acurácia=47.6%
+  Buy-and-Hold           retorno=-53.27% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-48.61% | acurácia=0.5119 | baseline=0.504 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  ETH/USDT | 4h | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-11-27T16:00:00+00:00 -> 2026-06-30T16:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)              -1.96          47.7     -14.64
+  Buy-and-Hold                 -48.15           N/A     -54.43
+  Supervisionado (LSTM)        -23.99          51.3     -41.08
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=5.96% | acurácia=47.9%
+  Buy-and-Hold           retorno=-53.15% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-23.99% | acurácia=0.5128 | baseline=0.5035 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  ETH/USDT | 1d | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-12-13T00:00:00+00:00 -> 2026-06-29T00:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)               2.25          46.5     -15.23
+  Buy-and-Hold                 -49.53           N/A     -53.27
+  Supervisionado (LSTM)        -48.59          46.7     -53.27
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=-15.83% | acurácia=47.4%
+  Buy-and-Hold           retorno=-53.22% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-48.59% | acurácia=0.4673 | baseline=0.5377 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  ETH/USDT | 1w | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2026-04-06T00:00:00+00:00 -> 2026-06-22T00:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)                0.0          66.7        0.0
+  Buy-and-Hold                 -18.52           N/A     -33.71
+  Supervisionado (LSTM)        -18.52          41.7     -33.71
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=0.0% | acurácia=50.0%
+  Buy-and-Hold           retorno=-45.35% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-18.52% | acurácia=0.4167 | baseline=0.5833 | seq_len=7 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  SOL/USDT | 1h | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-11-25T09:00:00+00:00 -> 2026-06-30T22:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)               2.18          49.1     -19.63
+  Buy-and-Hold                 -45.95           N/A     -58.73
+  Supervisionado (LSTM)         -55.8          50.9     -61.24
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=-11.79% | acurácia=48.9%
+  Buy-and-Hold           retorno=-61.74% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-55.8% | acurácia=0.5086 | baseline=0.5077 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  SOL/USDT | 4h | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-11-27T16:00:00+00:00 -> 2026-06-30T16:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)               1.82          47.5     -16.05
+  Buy-and-Hold                 -48.39           N/A     -58.09
+  Supervisionado (LSTM)        -24.27          48.9     -40.81
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=-1.1% | acurácia=47.6%
+  Buy-and-Hold           retorno=-61.31% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-24.27% | acurácia=0.4895 | baseline=0.5097 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  SOL/USDT | 1d | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-12-13T00:00:00+00:00 -> 2026-06-29T00:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)             -14.05          43.3     -15.53
+  Buy-and-Hold                 -44.67           N/A      -57.6
+  Supervisionado (LSTM)        -34.11          47.2     -43.79
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=-39.06% | acurácia=49.6%
+  Buy-and-Hold           retorno=-62.08% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-34.11% | acurácia=0.4724 | baseline=0.5477 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  SOL/USDT | 1w | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2026-04-06T00:00:00+00:00 -> 2026-06-22T00:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)                0.0           N/A        0.0
+  Buy-and-Hold                   0.07           N/A     -31.07
+  Supervisionado (LSTM)           0.0          41.7        0.0
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=0.0% | acurácia=N/A
+  Buy-and-Hold           retorno=-56.72% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=0.0% | acurácia=0.4167 | baseline=0.5833 | seq_len=7 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  DOGE/USDT | 1h | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-11-25T09:00:00+00:00 -> 2026-06-30T22:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)             -13.73          47.1     -19.85
+  Buy-and-Hold                  -51.5           N/A     -55.53
+  Supervisionado (LSTM)        -54.66          51.1     -60.37
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=1.78% | acurácia=48.8%
+  Buy-and-Hold           retorno=-77.56% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-54.66% | acurácia=0.5107 | baseline=0.5117 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  DOGE/USDT | 4h | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-11-27T16:00:00+00:00 -> 2026-06-30T16:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)              -7.15          44.3     -12.57
+  Buy-and-Hold                 -53.18           N/A      -54.0
+  Supervisionado (LSTM)        -15.73          51.2     -32.06
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=11.55% | acurácia=46.7%
+  Buy-and-Hold           retorno=-77.4% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-15.73% | acurácia=0.512 | baseline=0.5259 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  DOGE/USDT | 1d | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2025-12-13T00:00:00+00:00 -> 2026-06-29T00:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)              15.26          56.4      -5.27
+  Buy-and-Hold                 -48.16           N/A     -52.49
+  Supervisionado (LSTM)         -5.27          55.8     -21.17
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=-5.08% | acurácia=55.2%
+  Buy-and-Hold           retorno=-77.83% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=-5.27% | acurácia=0.5578 | baseline=0.593 | seq_len=24 | epochs=20
+
+──────────────────────────────────────────────────────────────────────
+  DOGE/USDT | 1w | 2025-01-01 -> 2026-06-30
+──────────────────────────────────────────────────────────────────────
+  [Janela comum de avaliação]
+  Período: 2026-04-06T00:00:00+00:00 -> 2026-06-22T00:00:00+00:00
+  Estratégia               Retorno(%)   Acurácia(%)  Max.DD(%)
+  ---------------------- ------------ ------------- ----------
+  CriptoIA (proxy)                0.0           N/A        0.0
+  Buy-and-Hold                 -14.28           N/A     -34.91
+  Supervisionado (LSTM)         16.19          75.0        0.0
+  [Período completo — contexto]
+  CriptoIA (proxy)       retorno=0.0% | acurácia=33.3%
+  Buy-and-Hold           retorno=-76.82% | acurácia=N/A
+  Supervisionado (LSTM)  retorno=16.19% | acurácia=0.75 | baseline=0.5 | seq_len=7 | epochs=20

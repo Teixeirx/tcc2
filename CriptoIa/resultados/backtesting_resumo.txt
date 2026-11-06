@@ -1,0 +1,28 @@
+RESUMO DO BACKTESTING — CRIPTOIA (TCC II)
+====================================================================================================
+Par        TF    Candles  Válidos  Compra   Venda  Manter   Acur%     Ret%   MaxDD%    Ops   Cob%
+----------------------------------------------------------------------------------------------------
+BTC/USDT   1h      13104    13054    1758    1630    9666    48.5    -1.67   -15.30   1890  100.0
+BTC/USDT   4h       3276     3226     360     374    2492    49.0    -4.72   -16.54    464  100.0
+BTC/USDT   1d        546      496      55      53     388    56.5    16.20   -14.08     71  100.0
+BTC/USDT   1w         78       28       0       3      25    33.3     0.00     0.00      5  100.0
+ETH/USDT   1h      13104    13054    1483    1468   10103    47.6   -23.26   -26.67   1689  100.0
+ETH/USDT   4h       3276     3226     328     434    2464    47.9     5.96   -17.69    422  100.0
+ETH/USDT   1d        546      496      46      70     380    47.4   -15.83   -28.70     60  100.0
+ETH/USDT   1w         78       28       0       4      24    50.0     0.00     0.00      3  100.0
+SOL/USDT   1h      13104    13054    1572    1625    9857    48.9   -11.79   -38.02   1878  100.0
+SOL/USDT   4h       3276     3226     348     448    2430    47.6    -1.10   -28.14    456  100.0
+SOL/USDT   1d        546      496      58      63     375    49.6   -39.06   -39.85     65  100.0
+SOL/USDT   1w         78       28       0       0      28     N/A     0.00     0.00      0  100.0
+DOGE/USDT  1h      13104    13054    1568    1690    9796    48.8     1.78   -34.10   1828  100.0
+DOGE/USDT  4h       3276     3226     316     472    2438    46.7    11.55   -30.48    466  100.0
+DOGE/USDT  1d        546      496      56      69     371    55.2    -5.08   -41.04     80  100.0
+DOGE/USDT  1w         78       28       0       3      25    33.3     0.00     0.00      2  100.0
+
+CRITÉRIOS DE SUCESSO (recorte diário operacional)
+  Ativos avaliados: 4
+  Acurácia > 50%: 2/4 — atendido=False
+  Retorno não negativo: 1/4 — atendido=False
+  Recorte: 1d
+  Nota: O TCC1 não especifica o timeframe do resumo dos critérios. O recorte 1d (ou todos os timeframes válidos quando não há 1d) é uma escolha operacional deste trabalho, não um parâmetro do TCC.
+  Observação: Critério aplicado à estratégia de indicadores (proxy), não às recomendações do Gemini.

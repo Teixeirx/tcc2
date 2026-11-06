@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CriptoIA — Sistema de Análise e Backtesting{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header class="navbar">
+        <a href="{{ url_for('index') }}" class="nav-brand">
+            <span>🪙 CriptoIA</span>
+            <span class="brand-badge">TCC II</span>
+        </a>
+
+        {% if session.get('usuario_autenticado') %}
+        <nav class="nav-links">
+            <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">Visão Geral</a>
+            <a href="{{ url_for('analise') }}" class="{% if request.endpoint == 'analise' %}active{% endif %}">Nova Análise</a>
+            <a href="{{ url_for('historico') }}" class="{% if request.endpoint == 'historico' %}active{% endif %}">Histórico</a>
+            <a href="{{ url_for('backtesting') }}" class="{% if request.endpoint == 'backtesting' %}active{% endif %}">Backtesting</a>
+            <a href="{{ url_for('logout') }}" class="btn-logout">Sair</a>
+        </nav>
+        {% endif %}
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        CriptoIA · Sistema de Suporte à Decisão em Criptoativos · TCC II Ciência da Computação (UFN)<br>
+        Dados via CCXT (Binance) · Análise Multimodal por Google Gemini · <em>Objetivos estritamente educacionais e de pesquisa.</em>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Análise — CriptoIA{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 24px;">
+    <h1 class="page-title"><span class="page-icone">🔬</span> Análise Técnica Multimodal</h1>
+    <p class="page-subtitle">Coleta dados em tempo real da Binance, calcula indicadores em Pandas e submete ao Google Gemini.</p>
+</div>
+
+<!-- Formulário de Análise -->
+<div class="card" style="margin-bottom: 28px;">
+    <form method="POST" action="{{ url_for('analise') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px;">
+            <div class="form-group">
+                <label class="form-label" for="par-select">Par de Negociação</label>
+                <select id="par-select" class="form-select" onchange="atualizarVisibilidadePar()">
+                    <option value="BTC/USDT" {% if par_selecionado is none or par_selecionado == 'BTC/USDT' %}selected{% endif %}>BTC/USDT</option>
+                    <option value="ETH/USDT" {% if par_selecionado == 'ETH/USDT' %}selected{% endif %}>ETH/USDT</option>
+                    <option value="SOL/USDT" {% if par_selecionado == 'SOL/USDT' %}selected{% endif %}>SOL/USDT</option>
+                    <option value="DOGE/USDT" {% if par_selecionado == 'DOGE/USDT' %}selected{% endif %}>DOGE/USDT</option>
+                    <option value="OUTRO" {% if par_selecionado == 'OUTRO' %}selected{% endif %}>Outro par (escolha manualmente)</option>
+                </select>
+                <input type="text" id="par" name="par" class="form-control" value="{{ par_selecionado or 'BTC/USDT' }}" placeholder="Ex: BTC/USDT, ETH/USDT, SOL/USDT, DOGE/USDT" style="display: none;" list="sugestoes-pares">
+                <datalist id="sugestoes-pares">
+                    <option value="BTC/USDT">
+                    <option value="ETH/USDT">
+                    <option value="SOL/USDT">
+                    <option value="DOGE/USDT">
+                    <option value="ADA/USDT">
+                    <option value="BNB/USDT">
+                    <option value="XRP/USDT">
+                </datalist>
+                <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 6px;">
+                    Pares padrão do TCC: BTC · ETH · SOL · DOGE. Selecione <strong>Outro par</strong> para analisar qualquer par válido listado na Binance.
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="intervalo">Timeframe</label>
+                <select id="intervalo" name="intervalo" class="form-select">
+                    <option value="1h" {% if intervalo_selecionado == '1h' %}selected{% endif %}>1h (Horário)</option>
+                    <option value="4h" {% if intervalo_selecionado == '4h' %}selected{% endif %}>4h (4 Horas)</option>
+                    <option value="1d" {% if not intervalo_selecionado or intervalo_selecionado == '1d' %}selected{% endif %}>1d (Diário — Padrão TCC)</option>
+                    <option value="1w" {% if intervalo_selecionado == '1w' %}selected{% endif %}>1w (Semanal)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="quantidade">Quantidade de Candles</label>
+                <input type="number" id="quantidade" name="quantidade" class="form-control" value="{{ quantidade_selecionada or 90 }}" min="50" max="1000">
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+            <button type="submit" class="btn btn-primary">
+                🚀 Executar Análise com Gemini
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Resultado da Análise -->
+{% if resultado %}
+<div style="margin-bottom: 28px;">
+
+    <!-- Cabeçalho do Ativo -->
+    <div class="card" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h2 style="font-size: 1.5rem; font-weight: 700;">{{ resultado.par }}</h2>
+                <span style="background: rgba(255, 255, 255, 0.08); padding: 3px 8px; border-radius: 4px; font-size: 0.82rem; color: var(--text-secondary);">
+                    Timeframe: {{ resultado.intervalo }} · {{ resultado.quantidade }} velas
+                </span>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+                Análise gerada em {{ resultado.data }} via Google Gemini {{ resultado.modelo }}
+            </div>
+        </div>
+
+        {% if resultado.ticker %}
+        <div style="text-align: right;">
+            <div style="font-size: 1.8rem; font-weight: 700;">
+                ${{ "{:,.2f}".format(resultado.ticker.preco) if resultado.ticker.preco else 'N/A' }}
+            </div>
+            <div style="font-size: 0.95rem; font-weight: 600; color: {{ '#3fb950' if resultado.ticker.variacao_24h >= 0 else '#f85149' }};">
+                {{ '+' if resultado.ticker.variacao_24h >= 0 else '' }}{{ resultado.ticker.variacao_24h }}% (24h)
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recomendação da IA -->
+    {% if resultado.analise_ia %}
+    <div class="card card-destaque" style="margin-bottom: 20px; border-left: 4px solid {{ '#3fb950' if resultado.analise_ia.acao == 'COMPRAR' else '#f85149' if resultado.analise_ia.acao == 'VENDER' else '#f0883e' }};">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.8rem;">
+                    {{ '📈' if resultado.analise_ia.acao == 'COMPRAR' else '📉' if resultado.analise_ia.acao == 'VENDER' else '⏸️' }}
+                </span>
+                <div>
+                    <span class="badge-acao badge-{{ resultado.analise_ia.acao.lower() }}" style="font-size: 1.1rem; padding: 6px 16px;">
+                        {{ resultado.analise_ia.acao }}
+                    </span>
+                    <span style="font-size: 0.85rem; color: var(--text-secondary); margin-left: 8px;">Recomendação do Modelo</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 24px; text-align: right;">
+                {% if resultado.analise_ia.preco_alvo %}
+                <div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Preço Alvo</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--cor-azul);">{{ resultado.analise_ia.preco_alvo }}</div>
+                </div>
+                {% endif %}
+                {% if resultado.analise_ia.tempo_estimado %}
+                <div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Tempo Estimado</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">{{ resultado.analise_ia.tempo_estimado }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div style="background: rgba(0, 0, 0, 0.2); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.95rem; line-height: 1.6;">
+            <strong>Justificativa Técnica:</strong><br>
+            {{ resultado.analise_ia.justificativa }}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Indicadores Técnicos -->
+    {% if resultado.indicadores %}
+    <div class="grid-cards" style="margin-bottom: 20px;">
+        <div class="card">
+            <div class="card-title">RSI (14 períodos)</div>
+            <div class="card-value" style="color: {{ '#f85149' if resultado.indicadores.rsi14 and resultado.indicadores.rsi14 > 70 else '#3fb950' if resultado.indicadores.rsi14 and resultado.indicadores.rsi14 < 30 else '#f0883e' }};">
+                {{ "{:.2f}".format(resultado.indicadores.rsi14) if resultado.indicadores.rsi14 else 'N/A' }}
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+                {{ 'Sobrecomprado (>70)' if resultado.indicadores.rsi14 and resultado.indicadores.rsi14 > 70 else 'Sobrevendido (<30)' if resultado.indicadores.rsi14 and resultado.indicadores.rsi14 < 30 else 'Zona Neutra (30-70)' }}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Médias Móveis (MM20 / MM50)</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--cor-amarelo);">
+                MM20: ${{ "{:,.2f}".format(resultado.indicadores.mm20) if resultado.indicadores.mm20 else 'N/A' }}
+            </div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--cor-azul);">
+                MM50: ${{ "{:,.2f}".format(resultado.indicadores.mm50) if resultado.indicadores.mm50 else 'N/A' }}
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+                {{ 'Golden Cross (Alta)' if resultado.indicadores.mm20 and resultado.indicadores.mm50 and resultado.indicadores.mm20 > resultado.indicadores.mm50 else 'Death Cross (Baixa)' }}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">MACD (12, 26, 9)</div>
+            <div class="card-value" style="font-size: 1.25rem;">
+                {{ "{:.4f}".format(resultado.indicadores.macd) if resultado.indicadores.macd else 'N/A' }}
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+                Sinal: {{ "{:.4f}".format(resultado.indicadores.sinal_macd) if resultado.indicadores.sinal_macd else 'N/A' }}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Bandas de Bollinger (20, 2.0)</div>
+            <div style="font-size: 0.92rem;">
+                Sup: ${{ "{:,.2f}".format(resultado.indicadores.bollinger_superior) if resultado.indicadores.bollinger_superior else 'N/A' }}<br>
+                Inf: ${{ "{:,.2f}".format(resultado.indicadores.bollinger_inferior) if resultado.indicadores.bollinger_inferior else 'N/A' }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Gráfico Plotly Interativo -->
+    {% if resultado.grafico_html %}
+    <div class="card">
+        <div class="card-title" style="margin-bottom: 14px;">📊 Gráfico Interativo de Candlestick</div>
+        <div style="width: 100%; overflow: hidden; border-radius: var(--radius-sm);">
+            {{ resultado.grafico_html|safe }}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function atualizarVisibilidadePar() {
+        var select = document.getElementById('par-select');
+        var input = document.getElementById('par');
+        if (select && input) {
+            if (select.value === 'OUTRO') {
+                select.style.display = 'none';
+                input.style.display = 'block';
+                input.placeholder = 'Ex: BTC/USDT, ETH/USDT, SOL/USDT, DOGE/USDT';
+            } else {
+                select.style.display = 'block';
+                input.style.display = 'none';
+                input.value = select.value;
+            }
+        }
+    }
+</script>
+{% endblock %}

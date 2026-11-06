@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Login — CriptoIA{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+    <div class="login-box">
+        <div class="login-header">
+            <div style="font-size: 2.2rem; margin-bottom: 8px;">🪙</div>
+            <h1>Autenticação CriptoIA</h1>
+            <p>Acesse o painel analítico e o módulo de backtesting</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('login') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label class="form-label" for="usuario">Usuário</label>
+                <input type="text" id="usuario" name="usuario" class="form-control" placeholder="admin" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="senha">Senha</label>
+                <input type="password" id="senha" name="senha" class="form-control" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                Entrar no Sistema
+            </button>
+        </form>
+
+        <div style="margin-top: 22px; padding: 12px; background: rgba(88, 166, 255, 0.08); border: 1px solid rgba(88, 166, 255, 0.2); border-radius: 6px; font-size: 0.78rem; color: var(--text-secondary); text-align: center;">
+            🔒 <strong>Ambiente Acadêmico TCC II</strong><br>
+            Credenciais definidas por <code>WEB_ADMIN_USER</code> e
+            <code>WEB_ADMIN_PASS</code> no arquivo <code>.env</code>.
+            {% if usando_senha_padrao %}
+            <br><span style="color: #d29922;">Senha padrão de desenvolvimento em uso.</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{
+  "gerado_em": "2026-11-06T04:04:01.750334+00:00",
+  "periodo": {
+    "inicio": "2025-01-01T00:00:00+00:00",
+    "fim": "2026-06-30T23:59:59+00:00"
+  },
+  "metodologia": "sinais_indicadores_proxy",
+  "avalia_gemini": false,
+  "resultados": [
+    {
+      "par": "BTC/USDT",
+      "intervalo": "1d",
+      "data_inicio_str": "2025-01-01",
+      "data_fim_str": "2026-06-30",
+      "metodologia": "sinais_indicadores_proxy",
+      "avalia_gemini": false,
+      "observacao_metodologica": "Estratégia determinística de indicadores usada como proxy; não representa as recomendações multimodais do Gemini.",
+      "n_candles": 546,
+      "n_candles_validos": 496,
+      "n_candles_indicadores": 497,
+      "n_sinais_compra": 55,
+      "n_sinais_venda": 53,
+      "n_sinais_manter": 388,
+      "distribuicao_acoes": {
+        "COMPRAR_pct": 11.09,
+        "VENDER_pct": 10.69,
+        "MANTER_pct": 78.23
+      },
+      "acuracia_direcional": 0.5648,
+      "retorno_acumulado": 0.162,
+      "retorno_total_pct": 16.2,
+      "max_drawdown_pct": -14.08,
+      "n_operacoes": 71,
+      "n_entradas": 18,
+      "data_inicio_avaliacao": null,
+      "data_fim_avaliacao": "2026-06-29T00:00:00+00:00",
+      "n_candles_coletados": 546,
+      "primeiro_candle": "2025-01-01T00:00:00+00:00",
+      "ultimo_candle": "2026-06-30T00:00:00+00:00",
+      "cobertura_solicitada_pct": 100.0
+    }
+  ],
+  "criterios_sucesso": {
+    "por_par": {
+      "BTC/USDT": {
+        "acuracia_media": 0.5648,
+        "retorno_medio_pct": 16.2,
+        "acuracia_acima_50": true,
+        "retorno_nao_negativo": true,
+        "timeframes_avaliados": [
+          "1d"
+        ]
+      }
+    },
+    "ativos_avaliados": 1,
+    "ativos_acuracia_acima_50": 1,
+    "ativos_retorno_nao_negativo": 1,
+    "criterio_acuracia_atendido": false,
+    "criterio_retorno_atendido": true,
+    "recorte_principal": "1d",
+    "nota_timeframe": "O TCC1 não especifica o timeframe do resumo dos critérios. O recorte 1d (ou todos os timeframes válidos quando não há 1d) é uma escolha operacional deste trabalho, não um parâmetro do TCC.",
+    "observacao": "Critério aplicado à estratégia de indicadores (proxy), não às recomendações do Gemini."
+  }
+}

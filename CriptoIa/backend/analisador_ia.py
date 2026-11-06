@@ -7,27 +7,48 @@ Gemini e recebe uma recomendação estruturada em JSON:
   - justificativa  : Explicação detalhada da recomendação
   - preco_alvo     : Estimativa de preço-alvo da operação
   - tempo_estimado : Estimativa de tempo para geração de lucro
+
+RNF06/CT06: qualquer falha (JSON inválido, campo ausente, timeout, chave
+inválida) retorna um fallback estruturado com acao="MANTER", sem propagar
+exceção para o chamador.
 """
 
 import os
 import json
 import re
+import time
+import PIL.Image
 from google import genai
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Modelo Gemini a ser utilizado
-MODELO_GEMINI = "gemini-2.5-flash"
+# Modelo Gemini a ser utilizado (padrão gemini-3.5-flash-lite)
+MODELO_GEMINI = os.getenv("MODELO_GEMINI", "gemini-3.5-flash-lite").strip()
+
+ACOES_VALIDAS = {"COMPRAR", "VENDER", "MANTER"}
 
 
-def _construir_prompt(indicadores: dict) -> str:
+def _fallback_manter(motivo: str) -> dict:
+    """Fallback estruturado exigido pelo RNF06/CT06."""
+    return {
+        "acao": "MANTER",
+        "justificativa": f"Fallback aplicado: {motivo}",
+        "preco_alvo": None,
+        "tempo_estimado": None,
+        "fallback": True,
+        "motivo_fallback": motivo,
+    }
+
+
+def _construir_prompt(indicadores: dict, par: str = "BTC/USDT") -> str:
     """
     Constrói o prompt textual enviado ao Gemini com os dados numéricos
     dos indicadores técnicos.
 
     Parâmetros:
         indicadores : Dicionário retornado por analise_tecnica.resumir_indicadores()
+        par         : Par analisado (ex.: BTC/USDT)
 
     Retorna:
         String com o prompt completo
@@ -60,16 +81,19 @@ def _construir_prompt(indicadores: dict) -> str:
         else "indefinida"
     )
 
+    def _num(valor, formato: str) -> str:
+        return format(valor, formato) if isinstance(valor, (int, float)) else "N/A"
+
     prompt = f"""Você é um trader especialista em análise técnica de criptomoedas.
-Analise o gráfico de candlestick do Bitcoin (BTC/USDT) anexo junto com os dados numéricos abaixo:
+Analise o gráfico de candlestick do par {par} anexo junto com os dados numéricos abaixo:
 
 === INDICADORES TÉCNICOS (último candle) ===
-- Preço de Fechamento: ${fechamento:,.2f} USDT
-- RSI (14): {rsi:.2f} → {situacao_rsi}
-- MACD: {macd:.4f} | Linha de Sinal: {sinal:.4f} → {tendencia_macd}
-- Média Móvel 20: ${mm20:,.2f} | Média Móvel 50: ${mm50:,.2f} → {posicao_medias}
-- Banda de Bollinger Superior: ${boll_sup:,.2f}
-- Banda de Bollinger Inferior: ${boll_inf:,.2f}
+- Preço de Fechamento: ${_num(fechamento, ',.2f')} USDT
+- RSI (14): {_num(rsi, '.2f')} → {situacao_rsi}
+- MACD: {_num(macd, '.4f')} | Linha de Sinal: {_num(sinal, '.4f')} → {tendencia_macd}
+- Média Móvel 20: ${_num(mm20, ',.2f')} | Média Móvel 50: ${_num(mm50, ',.2f')} → {posicao_medias}
+- Banda de Bollinger Superior: ${_num(boll_sup, ',.2f')}
+- Banda de Bollinger Inferior: ${_num(boll_inf, ',.2f')}
 ============================================
 
 Com base na imagem do gráfico E nos indicadores acima, determine:
@@ -98,14 +122,17 @@ A chave 'acao' deve conter APENAS uma das palavras: COMPRAR, VENDER ou MANTER.
 def _extrair_json_da_resposta(texto: str) -> dict:
     """
     Extrai e valida o JSON da resposta do Gemini.
-    Lida com casos onde o modelo envolve o JSON em blocos de código Markdown.
 
-    Parâmetros:
-        texto : Texto bruto retornado pelo Gemini
+    Lida com blocos Markdown e valida os campos obrigatórios. Em caso de
+    JSON inválido, tipo incorreto ou campo obrigatório ausente, levanta
+    ValueError para que o chamador aplique o fallback MANTER.
 
     Retorna:
-        Dicionário com os campos da análise
+        Dicionário com acao, justificativa, preco_alvo e tempo_estimado.
     """
+    if not isinstance(texto, str) or not texto.strip():
+        raise ValueError("Resposta vazia da API Gemini.")
+
     texto = texto.strip()
 
     # Remove marcações Markdown de código (```json ... ``` ou ``` ... ```)
@@ -114,23 +141,54 @@ def _extrair_json_da_resposta(texto: str) -> dict:
     texto = texto.strip()
 
     dados = json.loads(texto)
+    if not isinstance(dados, dict):
+        raise ValueError("A resposta JSON não é um objeto.")
 
-    # Normaliza a ação para maiúsculas
-    acao = dados.get("acao", "MANTER").upper().strip()
-    if acao not in {"COMPRAR", "VENDER", "MANTER"}:
+    if "acao" not in dados:
+        raise ValueError("Campo obrigatório ausente: acao.")
+    if not isinstance(dados["acao"], str):
+        raise ValueError("Campo 'acao' deve ser uma string.")
+
+    acao = dados["acao"].upper().strip()
+    aviso = None
+    if acao not in ACOES_VALIDAS:
+        aviso = f"acao inválida '{dados['acao']}'; normalizada para MANTER"
         acao = "MANTER"
 
-    return {
+    justificativa = dados.get("justificativa")
+    if not isinstance(justificativa, str) or not justificativa.strip():
+        raise ValueError("Campo obrigatório ausente ou vazio: justificativa.")
+
+    if "preco_alvo" not in dados:
+        raise ValueError("Campo obrigatório ausente: preco_alvo.")
+    if "tempo_estimado" not in dados:
+        raise ValueError("Campo obrigatório ausente: tempo_estimado.")
+
+    preco_alvo = dados.get("preco_alvo")
+    tempo_estimado = dados.get("tempo_estimado")
+
+    if acao in {"COMPRAR", "VENDER"}:
+        if preco_alvo in (None, ""):
+            raise ValueError("preco_alvo é obrigatório para COMPRAR/VENDER.")
+        if tempo_estimado in (None, ""):
+            raise ValueError("tempo_estimado é obrigatório para COMPRAR/VENDER.")
+
+    resultado = {
         "acao": acao,
-        "justificativa": dados.get("justificativa", "Sem justificativa disponível."),
-        "preco_alvo": dados.get("preco_alvo"),
-        "tempo_estimado": dados.get("tempo_estimado"),
+        "justificativa": justificativa.strip(),
+        "preco_alvo": preco_alvo,
+        "tempo_estimado": tempo_estimado,
     }
+    if aviso:
+        resultado["aviso"] = aviso
+        resultado["fallback"] = True
+    return resultado
 
 
 def analisar_mercado_com_gemini(
     caminho_grafico: str,
-    indicadores: dict
+    indicadores: dict,
+    par: str = "BTC/USDT",
 ) -> dict:
     """
     Envia o gráfico + indicadores ao Google Gemini e retorna a análise.
@@ -138,53 +196,59 @@ def analisar_mercado_com_gemini(
     Parâmetros:
         caminho_grafico : Caminho para o arquivo PNG do gráfico
         indicadores     : Dicionário de indicadores de analise_tecnica.resumir_indicadores()
+        par             : Par analisado (padrão: BTC/USDT)
 
     Retorna:
-        Dicionário com: acao, justificativa, preco_alvo, tempo_estimado
+        Dicionário com: acao, justificativa, preco_alvo e tempo_estimado.
+        Em qualquer falha, retorna fallback estruturado com acao="MANTER".
     """
-    chave_api = os.getenv("GEMINI_API_KEY", "")
+    chave_api = os.getenv("GEMINI_API_KEY", "").strip()
+    if "AIza" in chave_api:
+        chave_api = chave_api[chave_api.index("AIza"):].strip()
 
-    if not chave_api or chave_api == "sua_chave_gemini_aqui":
-        return {
-            "acao": "ERRO",
-            "justificativa": "A variável GEMINI_API_KEY não está configurada no arquivo .env.",
-            "preco_alvo": None,
-            "tempo_estimado": None,
-        }
+    if not chave_api or chave_api == "sua_chave_gemini_aqui" or "adicione aqui" in chave_api.lower():
+        return _fallback_manter(
+            "a variável GEMINI_API_KEY não está configurada no arquivo .env."
+        )
 
     try:
-        import PIL.Image
         cliente = genai.Client(api_key=chave_api)
 
         imagem = PIL.Image.open(caminho_grafico)
-        prompt = _construir_prompt(indicadores)
+        prompt = _construir_prompt(indicadores, par=par)
 
-        print(f"[Gemini] Enviando gráfico e indicadores para análise ({MODELO_GEMINI})...")
+        modelos_para_tentar = [MODELO_GEMINI]
+        if "lite" in MODELO_GEMINI:
+            modelos_para_tentar.append(MODELO_GEMINI.replace("-lite", ""))
+        elif "flash" in MODELO_GEMINI:
+            modelos_para_tentar.append(f"{MODELO_GEMINI}-lite")
 
-        resposta = cliente.models.generate_content(
-            model=MODELO_GEMINI,
-            contents=[prompt, imagem]
-        )
+        ultimo_erro = None
+        for modelo_atual in modelos_para_tentar:
+            try:
+                print(f"[Gemini] Enviando gráfico e indicadores para análise ({modelo_atual})...")
+                resposta = cliente.models.generate_content(
+                    model=modelo_atual,
+                    contents=[prompt, imagem]
+                )
+                print("[Gemini] Análise recebida. Processando resultado...")
+                return _extrair_json_da_resposta(getattr(resposta, "text", ""))
+            except (json.JSONDecodeError, ValueError, TypeError) as erro_validacao:
+                print(f"[Gemini] Resposta inválida: {erro_validacao}")
+                return _fallback_manter(f"Resposta inválida da API: {erro_validacao}")
+            except Exception as erro:
+                ultimo_erro = erro
+                msg_erro = str(erro).lower()
+                if "503" in msg_erro or "unavailable" in msg_erro or "demand" in msg_erro:
+                    print(f"[Gemini] Modelo {modelo_atual} temporariamente ocupado (503). Tentando alternativa...")
+                    time.sleep(1.5)
+                    continue
+                else:
+                    break
 
-        print("[Gemini] Análise recebida. Processando resultado...")
-        resultado = _extrair_json_da_resposta(resposta.text)
-        return resultado
+        print(f"[Gemini] Erro na chamada à API: {ultimo_erro}")
+        return _fallback_manter(f"falha ao conectar com o Google Gemini: {ultimo_erro}")
 
-    except json.JSONDecodeError as erro:
-        print(f"[Gemini] Erro ao interpretar JSON: {erro}")
-        print(f"[Gemini] Resposta bruta: {resposta.text[:500]}")
-        return {
-            "acao": "MANTER",
-            "justificativa": f"Não foi possível interpretar a resposta da IA. Resposta: {resposta.text[:300]}",
-            "preco_alvo": None,
-            "tempo_estimado": None,
-        }
-
-    except Exception as erro:
-        print(f"[Gemini] Erro na chamada à API: {erro}")
-        return {
-            "acao": "ERRO",
-            "justificativa": f"Falha ao conectar com o Google Gemini: {str(erro)}",
-            "preco_alvo": None,
-            "tempo_estimado": None,
-        }
+    except Exception as erro_geral:
+        print(f"[Gemini] Erro geral: {erro_geral}")
+        return _fallback_manter(f"falha ao conectar com o Google Gemini: {erro_geral}")

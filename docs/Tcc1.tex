@@ -1,0 +1,798 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{cite}
+
+\definecolor{codebg}{HTML}{F6F8FA}
+\definecolor{codeframe}{HTML}{D0D7DE}
+\definecolor{codetext}{HTML}{24292E}
+\definecolor{codecomment}{HTML}{6E7781}
+\definecolor{codekeyword}{HTML}{CF222E}
+\definecolor{codestring}{HTML}{0A3069}
+\definecolor{codenumber}{HTML}{0550AE}
+
+\lstset{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\scriptsize\color{codetext},
+  commentstyle=\color{codecomment}\itshape,
+  keywordstyle=\color{codekeyword}\bfseries,
+  stringstyle=\color{codestring},
+  numberstyle=\tiny\color{codenumber},
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{codeframe},
+  numbers=left,
+  numbersep=6pt,
+  tabsize=4,
+  showspaces=false,
+  showstringspaces=false,
+  xleftmargin=12pt,
+  xrightmargin=4pt,
+  language=Python
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue,
+  citecolor=blue
+}
+
+\begin{document}
+
+\title{CriptoIA: Um Sistema de Análise de Criptomoedas Baseado em\\
+       Indicadores Técnicos e Inteligência Artificial Multimodal}
+
+\author{
+  \IEEEauthorblockN{Gabriel Teixeira}
+  \IEEEauthorblockA{
+    Ciência da Computação\\
+    Universidade Franciscana\\
+    Santa Maria, Brasil\\
+    gabriel.teixeira@ufn.edu.br
+  }
+  \and
+  \IEEEauthorblockN{Orientador: Prof. Mirkos O. Martins}
+  \IEEEauthorblockA{
+    Ciência da Computação\\
+    Universidade Franciscana\\
+    Santa Maria, Brasil\\
+    mirkos@ufn.edu.br
+  }
+}
+
+\maketitle
+
+\begin{abstract}
+Este trabalho apresenta o CriptoIA, um sistema computacional desenvolvido em Python que integra coleta automatizada de dados financeiros, cálculo de indicadores de análise técnica e inteligência artificial multimodal para suporte à tomada de decisão no mercado de criptomoedas. O sistema conecta-se à API pública da Binance por meio da biblioteca CCXT para obter dados históricos de candles OHLCV (Open, High, Low, Close, Volume) e preços em tempo real. Sobre esses dados, calcula-se um conjunto de indicadores amplamente utilizados na análise técnica: Média Móvel Simples (SMA) de 20 e 50 períodos, Índice de Força Relativa (RSI-14), MACD (\textit{Moving Average Convergence Divergence}) e Bandas de Bollinger. Todos os indicadores são implementados com a biblioteca Pandas, sem dependências externas de análise técnica. O gráfico técnico gerado em alta resolução é submetido, em conjunto com os valores numéricos dos indicadores, ao modelo \textit{Gemini 2.5 Flash} do Google, que produz uma recomendação estruturada em JSON com ação (COMPRAR, VENDER ou MANTER), justificativa técnica detalhada, preço-alvo e estimativa de tempo. Os resultados são apresentados em um dashboard web interativo gerado localmente via Plotly, com tema escuro e micro-animações CSS. A arquitetura modular, a integração entre análise quantitativa clássica e IA generativa multimodal, e a baixa barreira de instalação distinguem o CriptoIA como uma ferramenta educacional e de pesquisa relevante no contexto de finanças computacionais. Este trabalho investiga em que medida a integração multimodal entre indicadores técnicos clássicos e um modelo de linguagem com visão computacional pode produzir recomendações de operação tecnicamente mais fundamentadas do que abordagens puramente numéricas ou puramente visuais, com critérios de avaliação objetiva a serem verificados no TFG~II por meio de backtesting sistemático.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Criptomoedas, Análise Técnica, Inteligência Artificial, Google Gemini, Bitcoin, MACD, RSI, Bandas de Bollinger, Python, CCXT, Plotly.
+\end{IEEEkeywords}
+
+\section{Introdução}
+
+O mercado de criptomoedas cresceu de forma expressiva ao longo da última década. O Bitcoin, lançado em 2009 por Satoshi Nakamoto \cite{nakamoto2008bitcoin}, inaugurou um paradigma de ativos digitais descentralizados baseados em tecnologia \textit{blockchain}, que hoje inclui milhares de criptomoedas negociadas em bolsas ao redor do mundo. Em 2024, a capitalização total do mercado ultrapassou dois trilhões de dólares, tornando-se um segmento relevante tanto para investidores individuais quanto para instituições financeiras \cite{coinmarketcap2024}. No Brasil, o interesse por criptoativos também cresceu substancialmente, com a Receita Federal registrando volumes recordes de declarações envolvendo ativos digitais \cite{pinheiro2019mercado}.
+
+Diferentemente dos mercados financeiros tradicionais, as bolsas de criptomoedas operam ininterruptamente, 24 horas por dia, sete dias por semana, sem pausas para fins de semana ou feriados. Essa característica, aliada à elevada volatilidade intrínseca dos ativos digitais, torna o acompanhamento manual contínuo praticamente inviável para a maioria dos investidores \cite{assaf2012mercado}. Nesse cenário, ferramentas de análise técnica automatizada surgem como recurso valioso para identificar padrões de mercado e oportunidades de negociação de forma sistemática.
+
+A análise técnica é um método de avaliação de ativos financeiros fundamentado no estudo de dados históricos de preço e volume \cite{murphy1999technical}. Por meio de indicadores matemáticos derivados das séries temporais de preços, o analista busca identificar tendências, momentum, condições de sobrecompra e sobrevenda, além de outros sinais relevantes para a tomada de decisão \cite{cavalcante2005mercado}. Dentre os indicadores mais utilizados destacam-se as Médias Móveis Simples e Exponenciais, o RSI (\textit{Relative Strength Index}), o MACD e as Bandas de Bollinger.
+
+Paralelamente, o surgimento de modelos de linguagem grandes (\textit{Large Language Models} — LLMs) com capacidade multimodal abre novas possibilidades para a análise financeira computacional. Modelos como o Gemini \cite{google2024gemini} são capazes de processar simultaneamente texto e imagens, permitindo a interpretação de gráficos de preços de forma visual e incorporando padrões gráficos que são difíceis de capturar somente por métricas numéricas. A utilização de IA generativa como suporte à decisão financeira é um campo emergente com potencial significativo \cite{maia2024inteligencia}.
+
+Neste contexto, o presente trabalho propõe e descreve o desenvolvimento do \textbf{CriptoIA}, um sistema que combina coleta automatizada de dados da Binance, cálculo de indicadores técnicos implementados em Pandas, geração de gráficos de alta qualidade e análise por IA multimodal em uma pipeline coesa.
+
+\textbf{Problema de Pesquisa.} Este trabalho investiga a seguinte questão: \textit{É possível construir um sistema que integre análise técnica quantitativa e inteligência artificial multimodal para produzir recomendações de operação em criptomoedas mais fundamentadas do que aquelas geradas por consulta direta a um modelo de linguagem sem contexto especializado?} A hipótese central é que o enriquecimento do prompt com interpretações qualitativas automáticas dos indicadores técnicos, combinado com o envio simultâneo do gráfico técnico em alta resolução, permite que o modelo Gemini 2.5 Flash produza recomendações com justificativas técnicas mais precisas e contextualmente referenciadas do que uma consulta genérica sem esse contexto. A contribuição acadêmica esperada é a demonstração de que a integração multimodal estruturada --- com \textit{prompt engineering} especializado e análise visual simultânea --- agrega valor sobre abordagens alternativas, hipótese que será verificada empiricamente no TFG~II por meio de backtesting sistemático.
+
+As contribuições específicas deste trabalho são:
+
+\begin{itemize}
+  \item Integração entre análise técnica clássica e modelo de linguagem multimodal (Gemini 2.5 Flash) para recomendação de operações em criptomoedas, com saída estruturada em JSON;
+  \item Implementação de cinco indicadores técnicos utilizando exclusivamente Pandas, sem bibliotecas externas de análise técnica;
+  \item Arquitetura modular em Python com separação clara entre pacotes \textit{backend} e \textit{frontend} e sem dependências circulares;
+  \item Dashboard web interativo gerado localmente como HTML autossuficiente, sem necessidade de servidor;
+  \item \textit{Prompt engineering} com interpretações qualitativas automáticas dos indicadores, enriquecendo o contexto enviado ao modelo e diferenciando o sistema de uma consulta direta à IA.
+\end{itemize}
+
+Este trabalho está organizado da seguinte forma: a Seção~\ref{sec:correlatos} apresenta os trabalhos correlatos; a Seção~\ref{sec:referencial} apresenta o referencial teórico; a Seção~\ref{sec:metodologia} descreve a metodologia, os requisitos do sistema e o cronograma; a Seção~\ref{sec:resultados} discute os resultados obtidos; e a Seção~\ref{sec:conclusao} apresenta as conclusões parciais e os trabalhos futuros previstos para o TFG~II.
+
+
+\section{Trabalhos Correlatos}
+\label{sec:correlatos}
+
+Esta se\c{c}\~ao apresenta tr\^es trabalhos acad\^emicos brasileiros relacionados ao CriptoIA, situando a contribui\c{c}\~ao deste projeto no contexto da literatura nacional de Ci\^encia da Computa\c{c}\~ao e Finan\c{c}as Computacionais.
+
+\subsection{SS Innova Crypto Analyzer: An\'alise Multi-Temporal com Indicadores T\'ecnicos}
+
+Santos e Capriglione \cite{monteiro2026ssinnova} apresentaram o \textit{SS Innova Crypto Analyzer}, um sistema computacional para an\'alise de criptomoedas em tempo real voltado ao apoio \`{a} decis\~ao de investidores de varejo, publicado na Revista RECIMA21 (Qualis CAPES A4) em 2026. O sistema integra quatro indicadores t\'ecnicos --- RSI, EMA, MACD e n\'iveis de retra\c{c}\~ao de Fibonacci --- em uma arquitetura de an\'alise multi-temporal que avalia cinco horizontes de tempo simultaneamente, gerando pontua\c{c}\~oes de confian\c{c}a normalizadas e recomenda\c{c}\~oes em linguagem natural. Em avalia\c{c}\~ao por \textit{backtesting} com quatro pares de criptomoedas ao longo de 2024, a abordagem multi-temporal elevou a acu\'racia m\'edia dos sinais direcionais de 58,4\% para 64,2\%, reduzindo em 11,8 pontos percentuais a taxa de falsos positivos. O CriptoIA compartilha o objetivo de gerar recomenda\c{c}\~oes acess\'iveis ao investidor, por\'em difere ao adotar um modelo de linguagem multimodal (Gemini 2.5 Flash) no lugar de heur\'isticas de pontua\c{c}\~ao, e ao submeter simultaneamente gr\'afico e dados num\'ericos \`{a} IA, em vez de avaliar apenas m\'etricas calculadas.
+
+\subsection{AllBot: Plataforma de Rob\^{o}s para Investimento em Criptomoedas}
+
+Silva J\'unior, Silva e Muniz \cite{silvajunior2022allbot} desenvolveram o \textit{AllBot}, uma plataforma \textit{web} para gerenciamento de rob\^{o}s de investimento em criptomoedas, apresentado como Trabalho de Conclus\~ao de Curso no Instituto Federal da Para\'iba (IFPB) em 2022. O sistema permite configurar rob\^{o}s com estrat\'egias baseadas em an\'alise t\'ecnica, test\'a-los com dados hist\'oricos e classificar os mais rent\'aveis em um ranking, contando ainda com integra\c{c}\~ao ao Telegram para notifica\c{c}\~oes de sinais. Enquanto o AllBot automatiza a execu\c{c}\~ao de ordens e incluiu \textit{backtesting} --- caracter\'istica listada como trabalho futuro no CriptoIA ---, o CriptoIA diferencia-se ao incorporar IA generativa multimodal para produzir justificativas qualitativas em linguagem natural para cada recomenda\c{c}\~ao, capacidade ausente no AllBot.
+
+\subsection{Predi\c{c}\~ao do Pre\c{c}o do Bitcoin com Indicadores T\'ecnicos em Modelos LSTM}
+
+Franciscon \cite{franciscon2023lstm} investigou a incorpora\c{c}\~ao de indicadores t\'ecnicos --- Bandas de Bollinger, RSI e oscilador Estoc\'astico --- como \textit{features} em modelos LSTM para predi\c{c}\~ao do pre\c{c}o do Bitcoin, em TCC na Universidade Tecnol\'ogica Federal do Paran\'a (UTFPR) em 2023. Foram desenvolvidos 16 modelos e 20 \textit{bots} com dados di\'arios e por hora; o modelo baseado em Bandas de Bollinger obteve o menor erro absoluto m\'edio nos dados por hora (300 USD). O CriptoIA usa os mesmos indicadores, mas adota abordagem distinta: em vez de treinamento supervisionado para predi\c{c}\~ao num\'erica de pre\c{c}o, emprega IA generativa multimodal para an\'alise em tempo real sem etapa de treinamento, produzindo recomenda\c{c}\~ao estruturada com justificativa t\'ecnica em linguagem natural.
+
+\section{Referencial Teórico}
+\label{sec:referencial}
+
+\subsection{Análise Técnica em Mercados Financeiros}
+
+A análise técnica parte do princípio de que toda a informação relevante para a avaliação de um ativo já está refletida em seu preço de mercado, e que os preços se movem em tendências identificáveis a partir de dados históricos \cite{edwards2018technical}. Três premissas fundamentam essa abordagem: (i) o preço desconta tudo; (ii) os preços se movem em tendências; e (iii) a história se repete. No contexto brasileiro, a análise técnica é amplamente adotada por operadores de bolsa e investidores de varejo como instrumento de apoio à decisão, conforme documentado por \cite{cavalcante2005mercado}.
+
+A análise técnica complementa, e muitas vezes se contrapõe, à análise fundamentalista, que avalia o valor intrínseco de um ativo com base em dados econômicos, balanços e perspectivas de crescimento \cite{assaf2012mercado}. No mercado de criptomoedas, onde os fundamentos são mais difíceis de mensurar objetivamente, a análise técnica ganha protagonismo como ferramenta de curto e médio prazo.
+
+\subsection{Indicadores Técnicos Utilizados}
+
+\subsubsection{Média Móvel Simples (SMA)}
+
+A Média Móvel Simples de $n$ períodos é definida pela equação:
+
+\begin{equation}
+  \text{SMA}_n(t) = \frac{1}{n} \sum_{i=0}^{n-1} P_{t-i}
+  \label{eq:sma}
+\end{equation}
+
+\noindent onde $P_t$ é o preço de fechamento no período $t$. A SMA suaviza as flutuações de curto prazo e evidencia a direção da tendência. No CriptoIA, são calculadas a SMA de 20 períodos (MM20, tendência de curto prazo) e a de 50 períodos (MM50, tendência de médio prazo). O cruzamento dessas médias é um dos sinais mais utilizados: quando MM20 cruza acima da MM50, configura-se o \textit{golden cross}, indicador de possível início de tendência de alta; o cruzamento inverso, denominado \textit{death cross}, sinaliza tendência de baixa.
+
+\subsubsection{RSI — Índice de Força Relativa}
+
+O RSI, proposto por J.~Welles Wilder em 1978 \cite{wilder1978new}, mede o momentum do preço em uma escala contínua de 0 a 100:
+
+\begin{equation}
+  \text{RSI} = 100 - \frac{100}{1 + RS}
+  \label{eq:rsi}
+\end{equation}
+
+\noindent onde $RS = \bar{G}/\bar{L}$, sendo $\bar{G}$ a média dos ganhos e $\bar{L}$ a média das perdas nos últimos $n$ períodos (convencionalmente $n=14$). O RSI acima de 70 indica condição de sobrecompra, sugerindo possível reversão de baixa; abaixo de 30, indica sobrevenda e possível reversão de alta. No CriptoIA, o RSI é calculado via variação diária dos preços de fechamento, com ganhos e perdas separados pelo método \texttt{clip()}.
+
+\subsubsection{MACD — \textit{Moving Average Convergence Divergence}}
+
+O MACD, desenvolvido por Gerald Appel na década de 1970, é calculado como a diferença entre a Média Móvel Exponencial (EMA) de 12 e de 26 períodos:
+
+\begin{equation}
+  \text{MACD} = \text{EMA}_{12} - \text{EMA}_{26}
+  \label{eq:macd}
+\end{equation}
+
+\noindent A EMA pondera os preços recentes de forma exponencialmente decrescente, tornando-se mais responsiva às variações recentes do que a SMA. A linha de sinal é a EMA de 9 períodos do próprio MACD, e o histograma representa a diferença entre MACD e linha de sinal. Cruzamentos ascendentes da linha MACD sobre a linha de sinal são interpretados como sinais de compra; cruzamentos descendentes, como sinais de venda.
+
+\subsubsection{Bandas de Bollinger}
+
+Desenvolvidas por John Bollinger \cite{bollinger2001bollinger}, as Bandas de Bollinger consistem em uma banda central (SMA de $n$ períodos) e duas bandas externas posicionadas a $k$ desvios padrão:
+
+\begin{align}
+  \text{BB}^{+} &= \text{SMA}_n + k \cdot \sigma_n \label{eq:bb_sup} \\
+  \text{BB}^{-} &= \text{SMA}_n - k \cdot \sigma_n \label{eq:bb_inf}
+\end{align}
+
+\noindent onde $\sigma_n$ é o desvio padrão dos preços de fechamento nos últimos $n$ períodos. No CriptoIA, utiliza-se $n=20$ e $k=2$. As bandas se expandem em períodos de alta volatilidade e se contraem em períodos de baixa volatilidade (\textit{squeeze}). Preços próximos à banda superior indicam sobrecompra relativa; próximos à inferior, sobrevenda.
+
+\subsection{Modelos de Linguagem com Capacidade Multimodal}
+
+Os LLMs com visão computacional (\textit{Vision-Language Models}) recebem como entrada sequências de tokens tanto textuais quanto visuais, permitindo raciocinar sobre imagens e responder perguntas baseadas em conteúdo visual \cite{liu2023visual}. Essa capacidade os torna candidatos naturais para análise de gráficos financeiros, nos quais padrões visuais como formações de candlestick, divergências e breakouts são fundamentais.
+
+O Gemini 2.5 Flash, modelo utilizado neste trabalho, pertence à família de modelos multimodais do Google DeepMind \cite{google2024gemini}. Trata-se de um modelo otimizado para baixa latência e alto volume de inferência, mantendo capacidade de raciocínio complexo sobre imagens e textos. Sua utilização via API REST, com autenticação por chave de API e estrutura de prompts flexível, o torna acessível para integração em sistemas externos sem necessidade de infraestrutura especializada.
+
+\subsection{Mercado de Criptomoedas e Ferramentas de Acesso}
+
+A Binance é a maior \textit{exchange} de criptomoedas do mundo em volume negociado \cite{binance2024}. Disponibiliza uma API REST pública que permite, sem autenticação, o acesso a dados históricos de candles OHLCV com até 1.000 registros por requisição, além de ticker de preços em tempo real. Cada candle OHLCV agrega cinco informações por período: preço de abertura, máximo, mínimo, fechamento e volume negociado.
+
+A biblioteca CCXT (\textit{CryptoCurrency eXchange Trading Library}) é uma solução de código aberto que unifica o acesso a mais de cem \textit{exchanges} de criptomoedas, incluindo a Binance, por meio de uma interface padronizada \cite{ccxt2024}. Isso permite que o CriptoIA seja facilmente adaptado para operar com outras exchanges, substituindo apenas o identificador da exchange na inicialização do cliente CCXT.
+
+\section{Metodologia}
+\label{sec:metodologia}
+
+Esta seção descreve a estratégia metodológica adotada no desenvolvimento do CriptoIA, os parâmetros que serão utilizados para avaliação objetiva das recomendações no TFG~II, os requisitos funcionais e não funcionais que guiam o sistema, a arquitetura, a implementação dos módulos, os casos de teste e o cronograma de execução.
+
+\subsection{Estratégia de Análise Multimodal}
+
+A metodologia do CriptoIA é estruturada em três camadas complementares: (i) \textbf{coleta e processamento quantitativo} dos dados de mercado via API da Binance, com cálculo dos indicadores técnicos exclusivamente por meio da biblioteca Pandas; (ii) \textbf{enriquecimento semântico} dos indicadores por meio de \textit{prompt engineering} com interpretações qualitativas automáticas (e.g., RSI $> 70 \rightarrow$ ``sobrecomprado'', cruzamento MM20/MM50 $\rightarrow$ ``golden cross''); e (iii) \textbf{análise multimodal} pelo modelo Gemini 2.5 Flash, que recebe simultaneamente o gráfico técnico em alta resolução e os dados numéricos textualizados, produzindo recomendação estruturada em JSON.
+
+Essa pipeline foi projetada para investigar se a combinação dessas três camadas produz recomendações mais fundamentadas do que abordagens baseadas apenas em métricas textuais ou apenas em análise visual. O valor agregado pelo CriptoIA em relação a uma consulta direta ao Gemini está na camada de contextualização: (1) os indicadores são calculados com precisão aritmética sobre dados reais da Binance; (2) suas interpretações são inferidas automaticamente, fornecendo ao modelo um contexto técnico estruturado que orienta o raciocínio além do reconhecimento visual puro; e (3) a saída em JSON padronizado viabiliza análise sistemática e rastreável das recomendações.
+
+\subsection{Parâmetros de Avaliação para o TFG~II}
+
+A avaliação objetiva da qualidade das recomendações geradas constitui o principal objetivo do TFG~II e será conduzida por meio de backtesting sistemático com os seguintes parâmetros:
+
+\begin{itemize}
+  \item \textbf{Ativos avaliados}: 4 pares de criptomoedas listados na Binance (BTC/USDT, ETH/USDT, SOL/USDT e DOGE/USDT), selecionados por representatividade de diferentes perfis de capitalização e volatilidade --- Bitcoin como ativo de referência, Ethereum como principal plataforma de contratos inteligentes, Solana como representante de alta performance, e Dogecoin como representante de ativos especulativos;
+  \item \textbf{Período histórico}: 18 meses de dados (janeiro de 2025 a junho de 2026), cobrindo ciclos de alta e baixa do mercado de criptomoedas;
+  \item \textbf{Timeframes}: 1h, 4h, 1d e 1w, avaliando o desempenho em diferentes horizontes temporais;
+  \item \textbf{Métricas de avaliação}: (a) \textit{acurácia direcional} --- percentual de recomendações em que a direção prevista (COMPRAR $\rightarrow$ alta; VENDER $\rightarrow$ baixa) foi confirmada pelo comportamento real do ativo no prazo estimado pelo modelo no campo \texttt{tempo\_estimado}; (b) \textit{retorno acumulado simulado} --- comparação entre o retorno de uma estratégia que segue todas as recomendações do sistema e a estratégia passiva \textit{buy-and-hold}; (c) \textit{distribuição de ações} --- frequência relativa de recomendações COMPRAR, VENDER e MANTER;
+  \item \textbf{Critérios de sucesso}: acurácia direcional superior a 50\% (melhor que predição aleatória) em pelo menos 3 dos 4 ativos avaliados, e retorno acumulado simulado não negativo no período de avaliação.
+\end{itemize}
+
+\subsection{Requisitos Funcionais}
+\label{sec:requisitos}
+
+Os requisitos funcionais descrevem o que o sistema deve fazer do ponto de vista do usuário:
+
+\begin{itemize}
+  \item \textbf{RF01 — Coleta de Dados Históricos}: O sistema deve coletar dados históricos de candles OHLCV (Open, High, Low, Close, Volume) de um par de criptomoedas informado pelo usuário, a partir da API pública da Binance, com quantidade e intervalo de tempo configuráveis via linha de comando;
+  \item \textbf{RF02 — Coleta de Preço em Tempo Real}: O sistema deve obter o preço atual do ativo, a variação percentual em 24 horas, e os valores de máxima, mínima e volume do dia;
+  \item \textbf{RF03 — Cálculo de Indicadores Técnicos}: O sistema deve calcular, sobre os dados históricos coletados, os indicadores: Média Móvel Simples de 20 períodos (MM20), Média Móvel Simples de 50 períodos (MM50), RSI de 14 períodos, MACD com linha de sinal e histograma, e Bandas de Bollinger (período 20, desvio 2);
+  \item \textbf{RF04 — Geração de Gráfico Técnico}: O sistema deve gerar um gráfico técnico em formato PNG com candlesticks, médias móveis, Bandas de Bollinger, volume e RSI, em tema escuro;
+  \item \textbf{RF05 — Análise por IA Multimodal}: O sistema deve enviar o gráfico PNG e os valores numéricos dos indicadores ao modelo Google Gemini 2.5 Flash e receber uma recomendação estruturada em JSON com os campos: \texttt{acao} (COMPRAR, VENDER ou MANTER), \texttt{justificativa}, \texttt{preco\_alvo} e \texttt{tempo\_estimado};
+  \item \textbf{RF06 — Geração de Dashboard Interativo}: O sistema deve gerar um arquivo HTML autossuficiente com gráfico Plotly interativo, cards de indicadores, cards de preços em tempo real e o resultado da análise da IA;
+  \item \textbf{RF07 — Abertura Automática do Dashboard}: Após gerado, o dashboard HTML deve ser aberto automaticamente no navegador padrão do sistema operacional.
+\end{itemize}
+
+\subsection{Requisitos Não Funcionais}
+
+Os requisitos não funcionais descrevem restrições e atributos de qualidade do sistema:
+
+\begin{itemize}
+  \item \textbf{RNF01 — Desempenho}: O tempo total de execução, desde a coleta de dados até a abertura do dashboard, não deve exceder 30 segundos em conexão banda larga com latência normal à API do Google;
+  \item \textbf{RNF02 — Portabilidade}: O sistema deve ser executável nos sistemas operacionais Windows, Linux e macOS, sem modificações no código-fonte;
+  \item \textbf{RNF03 — Modularidade}: O código deve ser organizado em módulos com responsabilidades bem definidas, sem dependências circulares entre os módulos do pacote \textit{backend};
+  \item \textbf{RNF04 — Manutenibilidade}: Cada módulo deve conter no máximo uma responsabilidade principal, permitindo sua substituição ou extensão sem impacto nos demais componentes;
+  \item \textbf{RNF05 — Segurança}: A chave de API do Google Gemini não deve ser armazenada diretamente no código-fonte; deve ser carregada a partir de variável de ambiente ou arquivo \texttt{.env};
+  \item \textbf{RNF06 — Usabilidade}: O sistema deve fornecer mensagens de erro claras em caso de falha de conexão com a API da Binance ou com o Google Gemini, sem encerramento abrupto do processo;
+  \item \textbf{RNF07 — Autonomia}: O dashboard HTML gerado deve funcionar inteiramente offline após a geração, sem dependência de servidor web ou conexão de rede.
+\end{itemize}
+
+\subsection{Diagrama de Casos de Uso}
+
+A Figura~\ref{fig:usecase} apresenta o diagrama UML de casos de uso do CriptoIA. O ator primário é o \textbf{Usuário}, que interage com o sistema por linha de comando. Os casos de uso identificados são: \textit{Configurar Parâmetros de Análise} (par, intervalo e quantidade), \textit{Executar Análise Completa}, \textit{Visualizar Dashboard} e \textit{Exportar Gráfico PNG}. O sistema interage com dois atores secundários (sistemas externos): a \textbf{API Binance} (para coleta de dados) e a \textbf{API Google Gemini} (para análise por IA).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\columnwidth]{imagens/diagrama_casos_uso.png}
+  \caption{Diagrama UML de casos de uso do CriptoIA.}
+  \label{fig:usecase}
+\end{figure}
+
+\subsection{Tecnologias Utilizadas}
+
+A Tabela~\ref{tab:tecnologias} resume as tecnologias e ferramentas empregadas no desenvolvimento do CriptoIA, categorizadas por camada do sistema.
+
+\begin{table}[H]
+  \centering
+  \caption{Tecnologias utilizadas no CriptoIA por camada}
+  \label{tab:tecnologias}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Camada} & \textbf{Tecnologia} & \textbf{Finalidade} \\
+    \midrule
+    Linguagem       & Python 3.11+         & Implementação geral \\
+    Coleta de dados & CCXT $\geq$4.0       & API Binance \\
+    Processamento   & Pandas $\geq$2.0     & DataFrames e indicadores \\
+    Visualização    & Matplotlib $\geq$3.8 & Gráfico PNG estático \\
+    Visualização    & mplfinance $\geq$0.12 & Estilo financeiro \\
+    Dashboard       & Plotly $\geq$5.0     & Gráfico interativo HTML \\
+    IA              & google-genai $\geq$1.0 & Google Gemini API \\
+    Imagens         & Pillow $\geq$10.0    & Leitura de PNG \\
+    Configuração    & python-dotenv $\geq$1.0 & Variáveis de ambiente \\
+    Controle de versão & Git / GitHub      & Versionamento do código \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Cronograma}
+
+A Tabela~\ref{tab:cronograma_tfg1} apresenta o cronograma de execução do TFG~I, com as atividades distribuídas ao longo do semestre. A Tabela~\ref{tab:cronograma_tfg2} detalha as atividades planejadas para o TFG~II, com foco na validação objetiva das recomendações geradas pelo sistema.
+
+\begin{table}[H]
+  \centering
+  \caption{Cronograma de atividades do TFG I}
+  \label{tab:cronograma_tfg1}
+  \begin{tabular}{lcccccc}
+    \toprule
+    \textbf{Atividade} & \textbf{Mar} & \textbf{Abr} & \textbf{Mai} & \textbf{Jun} & \textbf{Jul} & \textbf{Ago} \\
+    \midrule
+    Levantamento bibliográfico   & $\bullet$ & $\bullet$ &           &           &           &           \\
+    Definição de requisitos      & $\bullet$ & $\bullet$ &           &           &           &           \\
+    Implementação do backend     &           & $\bullet$ & $\bullet$ &           &           &           \\
+    Implementação do frontend    &           &           & $\bullet$ & $\bullet$ &           &           \\
+    Integração com API Gemini    &           &           & $\bullet$ & $\bullet$ &           &           \\
+    Testes e validação           &           &           &           & $\bullet$ & $\bullet$ &           \\
+    Escrita do artigo (TFG I)    &           &           & $\bullet$ & $\bullet$ & $\bullet$ &           \\
+    Entrega e apresentação TFG I &           &           &           &           & $\bullet$ &           \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Cronograma de atividades do TFG II}
+  \label{tab:cronograma_tfg2}
+  \begin{tabular}{lccccc}
+    \toprule
+    \textbf{Atividade} & \textbf{Ago} & \textbf{Set} & \textbf{Out} & \textbf{Nov} & \textbf{Dez} \\
+    \midrule
+    Implementação do módulo de backtesting & $\bullet$ & $\bullet$ &           &           &           \\
+    Coleta de dados históricos (Jan/2025--Jun/2026) & $\bullet$ & $\bullet$ &           &           &           \\
+    Execução: 4 ativos $\times$ 4 timeframes         &           & $\bullet$ & $\bullet$ &           &           \\
+    Cálculo de acurácia direcional e retorno   &           &           & $\bullet$ & $\bullet$ &           \\
+    Comparação com modelos supervisionados     &           &           & $\bullet$ & $\bullet$ &           \\
+    Testes automatizados via pytest            &           & $\bullet$ & $\bullet$ &           &           \\
+    Escrita do artigo (TFG II)                 &           & $\bullet$ & $\bullet$ & $\bullet$ &           \\
+    Entrega e apresentação TFG II              &           &           &           &           & $\bullet$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Arquitetura do Sistema}
+\label{sec:arquitetura}
+
+O CriptoIA foi projetado seguindo os princípios de separação de responsabilidades (\textit{Separation of Concerns}) e modularidade, de modo que cada componente realiza uma função bem delimitada e pode ser substituído ou estendido independentemente. A Figura~\ref{fig:arquitetura} apresenta o diagrama de componentes do sistema, e a Figura~\ref{fig:fluxo} ilustra o fluxo de execução da pipeline.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\columnwidth]{imagens/diagrama_arquitetura.png}
+  \caption{Diagrama de arquitetura modular do sistema CriptoIA.}
+  \label{fig:arquitetura}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\columnwidth]{imagens/diagrama_fluxo.png}
+  \caption{Fluxo de execução da pipeline do CriptoIA.}
+  \label{fig:fluxo}
+\end{figure}
+
+O sistema é organizado em dois pacotes Python principais:
+
+\begin{itemize}
+  \item \textbf{backend/}: contém os quatro módulos responsáveis pela lógica de negócio --- coleta de dados, análise técnica, geração de gráfico e comunicação com a IA. Nenhum módulo do \textit{backend} importa outro módulo do mesmo pacote, eliminando dependências circulares e facilitando testes unitários isolados.
+  \item \textbf{frontend/}: contém o módulo de geração do dashboard HTML interativo, que consome exclusivamente dados processados pelo \textit{backend}, sem acesso direto à API da Binance ou ao Gemini.
+\end{itemize}
+
+O arquivo \texttt{principal.py} atua como orquestrador, inicializando e encadeando os módulos em uma pipeline sequencial de cinco etapas. A Tabela~\ref{tab:dependencias} lista as dependências externas do projeto com suas versões mínimas.
+
+\begin{table}[H]
+  \centering
+  \caption{Dependências externas do CriptoIA}
+  \label{tab:dependencias}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Biblioteca} & \textbf{Versão} & \textbf{Finalidade} \\
+    \midrule
+    ccxt          & $\geq$4.0  & Acesso à API da Binance \\
+    pandas        & $\geq$2.0  & Manipulação de dados tabulares \\
+    matplotlib    & $\geq$3.8  & Gráficos estáticos (PNG) \\
+    mplfinance    & $\geq$0.12 & Gráficos estilo financeiro \\
+    plotly        & $\geq$5.0  & Gráficos interativos (HTML) \\
+    google-genai  & $\geq$1.0  & Integração com Google Gemini \\
+    Pillow        & $\geq$10.0 & Leitura de imagens (PNG) \\
+    python-dotenv & $\geq$1.0  & Gerenciamento de variáveis de ambiente \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Implementação dos Módulos}
+\label{sec:implementacao}
+
+\subsection{Módulo Orquestrador --- \texttt{principal.py}}
+
+O ponto de entrada do sistema realiza três configurações iniciais antes de invocar a pipeline: (1) define a codificação UTF-8 para saída padrão, garantindo compatibilidade com o Windows; (2) adiciona o diretório raiz do projeto ao \texttt{sys.path}, viabilizando as importações dos subpacotes \texttt{backend} e \texttt{frontend}; e (3) instancia o parser de argumentos via \texttt{argparse}, expondo os parâmetros configuráveis em linha de comando:
+
+\begin{itemize}
+  \item \texttt{--par}: par de negociação (padrão: \texttt{BTC/USDT});
+  \item \texttt{--intervalo}: timeframe dos candles — \texttt{1h}, \texttt{4h}, \texttt{1d} ou \texttt{1w} (padrão: \texttt{1d});
+  \item \texttt{--quantidade}: número de candles a buscar (padrão: 90).
+\end{itemize}
+
+A função \texttt{executar\_analise()} encadeia as cinco etapas da pipeline, conforme o Algoritmo~\ref{alg:pipeline}:
+
+\begin{figure}[H]
+\begin{lstlisting}[caption={Pipeline principal do sistema CriptoIA.}, label={alg:pipeline}]
+def executar_analise(par, intervalo, quantidade):
+    df_historico = buscar_dados_historicos(
+        par, intervalo, quantidade)
+    dados_ticker = buscar_preco_atual(par)
+
+    df_enriquecido = enriquecer_dataframe(df_historico)
+    indicadores = resumir_indicadores(df_enriquecido)
+
+    caminho_grafico = gerar_grafico_candlestick(
+        df_enriquecido, nome_arquivo="grafico.png")
+
+    analise_ia = analisar_mercado_com_gemini(
+        caminho_grafico, indicadores)
+
+    caminho_html = gerar_dashboard(
+        df=df_enriquecido,
+        dados_ticker=dados_ticker,
+        analise_ia=analise_ia,
+        indicadores=indicadores,
+        par=par)
+    webbrowser.open(f"file:///{caminho_html}")
+\end{lstlisting}
+\end{figure}
+
+\subsection{Módulo de Coleta de Dados — \texttt{coleta\_dados.py}}
+
+Este módulo é responsável pela comunicação com a API pública da Binance utilizando a biblioteca CCXT. A função auxiliar \texttt{obter\_cliente\_binance()} inicializa o cliente com suporte opcional a autenticação: quando as variáveis de ambiente \texttt{BINANCE\_API\_KEY} e \texttt{BINANCE\_SECRET\_KEY} estão configuradas (carregadas via \texttt{python-dotenv}), o cliente opera no modo autenticado; caso contrário, opera no modo público, suficiente para leitura de dados de mercado. O controle de taxa de requisições é gerenciado automaticamente pelo CCXT via \texttt{enableRateLimit=True}.
+
+São expostas duas funções públicas. A função \texttt{buscar\_dados\_historicos(par, intervalo, qtd)} invoca \texttt{fetch\_ohlcv()} e converte o resultado em um \texttt{pd.DataFrame} indexado por timestamp com colunas \texttt{Abertura}, \texttt{Maxima}, \texttt{Minima}, \texttt{Fechamento} e \texttt{Volume}, conforme o Algoritmo~\ref{alg:coleta}. A função \texttt{buscar\_preco\_atual(par)} consulta o endpoint \textit{ticker} e retorna um dicionário com preço corrente, variação percentual em 24h, máxima e mínima do dia e volume negociado.
+
+\begin{figure}[H]
+\begin{lstlisting}[caption={Função de busca de dados históricos.}, label={alg:coleta}]
+def buscar_dados_historicos(par, intervalo, qtd):
+    cliente = obter_cliente_binance()
+    dados = cliente.fetch_ohlcv(
+        par, intervalo, limit=qtd)
+    df = pd.DataFrame(dados, columns=[
+        "timestamp","Abertura","Maxima",
+        "Minima","Fechamento","Volume"])
+    df["timestamp"] = pd.to_datetime(
+        df["timestamp"], unit="ms")
+    df.set_index("timestamp", inplace=True)
+    return df
+\end{lstlisting}
+\end{figure}
+
+\subsection{Módulo de Análise Técnica — \texttt{analise\_tecnica.py}}
+
+Este módulo implementa todos os cálculos de indicadores técnicos utilizando exclusivamente a biblioteca Pandas, sem dependências externas especializadas em análise técnica. A decisão de implementar os indicadores do zero confere maior transparência e controle sobre os parâmetros de cálculo.
+
+A função \texttt{calcular\_media\_movel(df, janela)} aplica \texttt{rolling(window).mean()} sobre a coluna \texttt{Fechamento}. A função \texttt{calcular\_rsi(df, periodo=14)} computa as variações diárias com \texttt{diff()}, separa ganhos e perdas via \texttt{clip(lower=0)} e \texttt{clip(upper=0)}, calcula médias móveis simples de cada componente e obtém o RSI conforme a Equação~\ref{eq:rsi}. A função \texttt{calcular\_macd()} utiliza o método \texttt{ewm(span, adjust=False).mean()} do Pandas para calcular as EMAs de 12 e 26 períodos e retorna um DataFrame com as colunas \texttt{macd}, \texttt{sinal\_macd} e \texttt{histograma\_macd}. Por fim, \texttt{calcular\_bandas\_bollinger(df, janela=20, desvios=2.0)} aplica \texttt{rolling(window).std()} para obter o desvio padrão e constrói as bandas conforme as Equações~\ref{eq:bb_sup} e \ref{eq:bb_inf}.
+
+A função pública \texttt{enriquecer\_dataframe(df)} agrega todas essas colunas ao DataFrame original, realizando uma cópia prévia para não modificar o dado de entrada. A função \texttt{resumir\_indicadores(df)} extrai os valores da última linha (período mais recente) e os retorna em um dicionário com arredondamento e tratamento de valores ausentes via \texttt{pd.notna()}, conforme ilustrado a seguir:
+
+\begin{figure}[H]
+\begin{lstlisting}[caption={Resumo dos indicadores da última vela.}]
+def resumir_indicadores(df):
+    ultima = df.iloc[-1]
+    return {
+        "preco_fechamento": round(ultima["Fechamento"], 2),
+        "mm20":  round(ultima["MM20"],  2) if pd.notna(ultima["MM20"])  else None,
+        "mm50":  round(ultima["MM50"],  2) if pd.notna(ultima["MM50"])  else None,
+        "rsi14": round(ultima["RSI14"], 2) if pd.notna(ultima["RSI14"]) else None,
+        "macd":  round(ultima["MACD"],  4) if pd.notna(ultima["MACD"])  else None,
+        "sinal_macd": round(ultima["Sinal_MACD"], 4)
+            if pd.notna(ultima["Sinal_MACD"]) else None,
+        "bollinger_superior": round(ultima["Bollinger_Superior"], 2)
+            if pd.notna(ultima["Bollinger_Superior"]) else None,
+        "bollinger_inferior": round(ultima["Bollinger_Inferior"], 2)
+            if pd.notna(ultima["Bollinger_Inferior"]) else None,
+    }
+\end{lstlisting}
+\end{figure}
+
+\subsection{Módulo de Geração de Gráfico — \texttt{gerador\_grafico.py}}
+
+O gráfico técnico é gerado com as bibliotecas \textit{mplfinance} e \textit{matplotlib}, operando em modo \textit{headless} (\texttt{matplotlib.use("Agg")}), o que garante compatibilidade com ambientes sem interface gráfica, como servidores e contêineres. O módulo produz um gráfico composto por três painéis verticais com proporções \texttt{(4, 1.5, 1.5)}:
+
+\begin{enumerate}
+  \item \textbf{Painel de preço}: candlesticks com verde para candles de alta e vermelho para baixa, sobrepostos com as linhas MM20 (azul), MM50 (laranja), banda superior de Bollinger e banda inferior de Bollinger (linhas tracejadas em tom violeta), e banda central (tracejada cinza);
+  \item \textbf{Painel de volume}: barras verticais coloridas conforme a direção do candle;
+  \item \textbf{Painel RSI}: linha contínua do RSI-14 com linhas horizontais de referência tracejadas em 30 e 70.
+\end{enumerate}
+
+O tema visual é escuro (\texttt{\#0D1117}), consistente com o dashboard web. A imagem final é exportada em formato PNG com resolução de 150 DPI. Esse arquivo PNG é o artefato visual submetido ao Gemini na etapa seguinte, sendo a resolução suficiente para que o modelo interprete os padrões gráficos com fidelidade.
+
+\subsection{Módulo Analisador com IA — \texttt{analisador\_ia.py}}
+
+Este módulo encapsula toda a lógica de comunicação com a API do Google Gemini e é composto por três funções:
+
+\textbf{\texttt{\_construir\_prompt(indicadores)}}: recebe o dicionário de indicadores e constrói um prompt textual estruturado que contextualiza o Gemini como um \textit{trader} especialista em análise técnica. O prompt apresenta os valores numéricos dos indicadores acompanhados de interpretações qualitativas automáticas: o RSI é classificado como ``sobrecomprado'' (RSI $> 70$), ``sobrevendido'' (RSI $< 30$) ou ``neutro''; o MACD indica se está acima ou abaixo da linha de sinal; as médias móveis indicam se há tendência de alta ou baixa com base no cruzamento MM20/MM50. O modelo é instruído a responder \textbf{exclusivamente} em formato JSON com os campos \texttt{acao} (COMPRAR, VENDER ou MANTER), \texttt{justificativa}, \texttt{preco\_alvo} e \texttt{tempo\_estimado}.
+
+\textbf{\texttt{\_extrair\_json\_da\_resposta(texto)}}: lida com a variabilidade nas respostas do modelo, removendo marcações Markdown (blocos \texttt{```json}) antes de realizar o \texttt{json.loads()}. Após a decodificação, valida o campo \texttt{acao} contra os valores permitidos; caso seja inválido, substitui por ``MANTER''.
+
+\textbf{\texttt{analisar\_mercado\_com\_gemini(caminho\_grafico, indicadores)}}: função pública que instancia o cliente Gemini com a chave configurada em variável de ambiente, abre o PNG com a biblioteca Pillow e realiza a chamada multimodal ao modelo, conforme o Algoritmo~\ref{alg:gemini}:
+
+\begin{figure}[H]
+\begin{lstlisting}[caption={Chamada multimodal ao modelo Gemini.}, label={alg:gemini}]
+cliente = genai.Client(api_key=chave_api)
+imagem = PIL.Image.open(caminho_grafico)
+prompt = _construir_prompt(indicadores)
+
+resposta = cliente.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=[prompt, imagem]
+)
+resultado = _extrair_json_da_resposta(
+    resposta.text)
+\end{lstlisting}
+\end{figure}
+
+O envio simultâneo de \texttt{prompt} (texto) e \texttt{imagem} (objeto Pillow) na lista \texttt{contents} caracteriza a chamada multimodal. A função inclui blocos \texttt{try/except} para tratar \texttt{JSONDecodeError} e erros gerais de conexão com a API, retornando respostas de \textit{fallback} estruturadas em ambos os casos.
+
+\subsection{Módulo do Dashboard — \texttt{gerador\_dashboard.py}}
+
+O módulo de frontend gera um arquivo HTML completamente autossuficiente, todas as dependências JavaScript e CSS são embutidas no arquivo, que pode ser aberto diretamente em qualquer navegador sem servidor web. O dashboard é estruturado em cinco blocos visuais:
+
+\begin{enumerate}
+  \item \textbf{Cabeçalho}: logotipo do sistema, par e timeframe analisados, e badge animado com horário da análise e ponto pulsante indicando status ao vivo;
+  \item \textbf{Grade de preços}: quatro cards com preço atual, variação percentual em 24h (com cor dinâmica por sinal), máxima, mínima e volume do dia;
+  \item \textbf{Gráfico Plotly interativo}: painel unificado com candlesticks, MM20, MM50, Bandas de Bollinger, barras de volume e RSI, com suporte a zoom, pan, hover com tooltip unificado e seletor de intervalos;
+  \item \textbf{Cards de indicadores}: exibe numericamente RSI, MACD, linha de sinal, MM20, MM50 e ambas as bandas de Bollinger, com interpretações qualitativas coloridas;
+  \item \textbf{Card de recomendação da IA}: exibe a ação (COMPRAR em verde, VENDER em vermelho, MANTER em amarelo) com emoji correspondente, justificativa técnica completa em parágrafo, preço-alvo e estimativa de tempo.
+\end{enumerate}
+
+O design adota o tema escuro da paleta do GitHub (\texttt{\#0D1117}), tipografia Inter via Google Fonts, gradientes sutis e micro-animações CSS (\textit{slide-in}, \textit{pulse} no badge e \textit{blink} nos indicadores de status), além de \textit{media queries} para compatibilidade com dispositivos móveis.
+
+\subsection{Casos de Teste}
+\label{sec:testes}
+
+Esta subseção descreve os casos de teste planejados para validar os requisitos funcionais do CriptoIA. Para cada caso de teste são definidos: o requisito coberto, as pré-condições, os passos de execução, os critérios de sucesso e os critérios de falha.
+
+\begin{table}[H]
+  \centering
+  \caption{CT01 — Coleta de Dados Históricos (RF01)}
+  \label{tab:ct01}
+  \begin{tabular}{p{2.5cm}p{5cm}}
+    \toprule
+    \textbf{Campo} & \textbf{Descrição} \\
+    \midrule
+    Pré-condição  & Conexão à internet disponível \\
+    Entrada       & Par: BTC/USDT, Intervalo: 1d, Qtd: 90 \\
+    Sucesso       & DataFrame retornado com 90 linhas e colunas Abertura, Maxima, Minima, Fechamento, Volume; sem valores nulos \\
+    Falha         & DataFrame vazio, exceção de conexão ou número de linhas diferente do solicitado \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{CT02 — Cálculo dos Indicadores Técnicos (RF03)}
+  \label{tab:ct02}
+  \begin{tabular}{p{2.5cm}p{5cm}}
+    \toprule
+    \textbf{Campo} & \textbf{Descrição} \\
+    \midrule
+    Pré-condição  & DataFrame histórico com $\geq$50 candles \\
+    Entrada       & DataFrame do CT01 \\
+    Sucesso       & Colunas MM20, MM50, RSI14, MACD, Sinal\_MACD, Bollinger\_Superior e Bollinger\_Inferior presentes; valores numéricos dentro dos intervalos esperados (RSI entre 0 e 100; Bollinger\_Superior $>$ Bollinger\_Inferior) \\
+    Falha         & Qualquer coluna ausente ou valor fora do intervalo esperado \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{CT03 — Geração do Gráfico PNG (RF04)}
+  \label{tab:ct03}
+  \begin{tabular}{p{2.5cm}p{5cm}}
+    \toprule
+    \textbf{Campo} & \textbf{Descrição} \\
+    \midrule
+    Pré-condição  & DataFrame enriquecido com indicadores \\
+    Entrada       & DataFrame do CT02 \\
+    Sucesso       & Arquivo \texttt{grafico.png} criado em disco, tamanho $>$ 50 KB, abrível como imagem válida pela biblioteca Pillow \\
+    Falha         & Arquivo não gerado, tamanho zero ou imagem corrompida \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{CT04 — Análise por IA Gemini (RF05)}
+  \label{tab:ct04}
+  \begin{tabular}{p{2.5cm}p{5cm}}
+    \toprule
+    \textbf{Campo} & \textbf{Descrição} \\
+    \midrule
+    Pré-condição  & Chave de API Gemini válida configurada; arquivo PNG gerado \\
+    Entrada       & Gráfico PNG do CT03 + dicionário de indicadores do CT02 \\
+    Sucesso       & JSON retornado contém os campos \texttt{acao} (COMPRAR, VENDER ou MANTER), \texttt{justificativa} (texto não vazio), \texttt{preco\_alvo} e \texttt{tempo\_estimado} \\
+    Falha         & JSON malformado, campo \texttt{acao} ausente ou com valor inválido sem fallback aplicado; timeout na chamada à API \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{CT05 — Geração e Abertura do Dashboard (RF06, RF07)}
+  \label{tab:ct05}
+  \begin{tabular}{p{2.5cm}p{5cm}}
+    \toprule
+    \textbf{Campo} & \textbf{Descrição} \\
+    \midrule
+    Pré-condição  & Todos os módulos anteriores executados com sucesso \\
+    Entrada       & DataFrame enriquecido, dados do ticker, análise da IA e indicadores \\
+    Sucesso       & Arquivo HTML gerado com tamanho $>$ 500 KB; arquivo aberto automaticamente no navegador padrão; página exibe corretamente o gráfico Plotly, os cards de indicadores e a recomendação da IA \\
+    Falha         & Arquivo HTML não gerado, navegador não aberto ou página exibindo erro de renderização \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{CT06 — Tratamento de Falha de Conexão (RNF06)}
+  \label{tab:ct06}
+  \begin{tabular}{p{2.5cm}p{5cm}}
+    \toprule
+    \textbf{Campo} & \textbf{Descrição} \\
+    \midrule
+    Pré-condição  & Simular falha de conexão desabilitando a rede ou fornecendo chave de API inválida \\
+    Entrada       & Par válido, chave de API inválida \\
+    Sucesso       & Sistema exibe mensagem de erro descritiva no terminal sem encerrar com traceback não tratado; retorna resposta de fallback JSON estruturada com \texttt{acao}: ``MANTER'' \\
+    Falha         & Sistema encerra com exceção não tratada ou trava sem resposta \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Resultados e Discussão}
+\label{sec:resultados}
+
+\subsection{Execução do Sistema}
+
+O CriptoIA foi testado com o par BTC/USDT (Bitcoin/Dólar Tether), variando os timeframes disponíveis (1h, 4h, 1d e 1w). O Bitcoin foi escolhido como ativo de referência por ser o de maior liquidez e volume de dados históricos disponíveis na API pública da Binance, oferecendo um cenário representativo para validação do sistema. A execução completa, desde a coleta de dados até a abertura do dashboard no navegador, tem duração média de 8 a 15 segundos em conexão banda larga. A maior parte desse tempo é consumida pela chamada à API do Gemini (4--10 s, dependendo da carga dos servidores do Google) e pela geração do gráfico PNG (1--2 s). A coleta de dados da Binance e a geração do HTML são praticamente instantâneas em comparação. Por ser parametrizável via linha de comando, o sistema suporta qualquer par listado na Binance, sendo a extensão para outros ativos uma das direções previstas para trabalhos futuros.
+
+
+\subsection{Qualidade da Análise Gerada pelo Gemini}
+
+O modelo Gemini 2.5 Flash demonstrou consistente capacidade de integrar as informações visuais do gráfico com os dados numéricos dos indicadores presentes no prompt. Nas análises realizadas, o modelo identificou corretamente: cruzamentos de médias móveis (\textit{golden cross} e \textit{death cross}); compressões e expansões das Bandas de Bollinger (\textit{squeeze} e \textit{breakout}); divergências entre preço e RSI; e estados de sobrecompra e sobrevenda. A justificativa gerada consistiu, em geral, em dois ou três parágrafos técnicos coerentes com o estado dos indicadores, com linguagem especializada e referências aos valores numéricos exatos. Um exemplo de resposta JSON gerada pelo modelo é apresentado na Listagem~\ref{lst:json}:
+
+\begin{figure}[H]
+\begin{lstlisting}[language={},caption={Exemplo de resposta JSON do Gemini.},label={lst:json}]
+{
+  "acao": "COMPRAR",
+  "justificativa": "O RSI de 42 indica saida de
+    zona de sobrevenda com recuperacao de momentum.
+    O MACD cruzou acima da linha de sinal,
+    confirmando a tendencia de alta. A MM20
+    ($94.200) cruzou acima da MM50 ($91.800),
+    configurando um golden cross. O preco esta
+    proximo a banda inferior de Bollinger,
+    indicando potencial de reversao.",
+  "preco_alvo": "$101.500,00",
+  "tempo_estimado": "7 a 14 dias"
+}
+\end{lstlisting}
+\end{figure}
+
+\subsection{Limitações Identificadas}
+
+Durante o desenvolvimento e os testes, foram observadas as seguintes limitações:
+
+\begin{itemize}
+  \item \textbf{Caráter orientativo}: a recomendação é baseada exclusivamente em análise técnica e não considera fundamentos do ativo, notícias de mercado, regulações ou condições macroeconômicas \cite{pinheiro2019mercado}. O sistema deve ser utilizado como ferramenta de apoio, e não como conselho de investimento;
+  \item \textbf{Consistência da IA}: em situações raras, o modelo retornou JSON sintaticamente malformado ou com campo \texttt{acao} fora dos valores esperados; o módulo \texttt{\_extrair\_json\_da\_resposta()} trata esses casos com \textit{fallback} automático para a ação ``MANTER'';
+  \item \textbf{Limite de dados históricos}: a API pública da Binance limita o retorno a 1.000 candles por requisição, o que pode ser insuficiente para análises de longo prazo com timeframes diários ou semanais;
+  \item \textbf{Ausência de backtesting}: o sistema não inclui mecanismos de avaliação histórica das recomendações geradas, tornando impossível mensurar objetivamente a taxa de acerto das sugestões da IA;
+  \item \textbf{Dependência de chave de API}: a etapa de análise com IA requer uma chave válida da API do Google Gemini, o que pode representar custo adicional em uso intensivo.
+\end{itemize}
+
+\subsection{Comparação com Trabalhos Relacionados}
+
+A abordagem por \textit{prompting} multimodal adotada no CriptoIA \'e mais flex\'ivel e interpret\'avel que as solu\c{c}\~oes baseadas em heur\'isticas ou aprendizado supervisionado. Ao contr\'ario do \textit{SS Innova Crypto Analyzer} \cite{monteiro2026ssinnova}, que gera pontua\c{c}\~oes de confian\c{c}a por regras est\'aticas multi-temporais sem capacidade de racioc\'inio contextual, o CriptoIA envia o gr\'afico t\'ecnico e os dados num\'ericos diretamente ao Gemini 2.5 Flash, que justifica cada recomenda\c{c}\~ao em linguagem natural com refer\'encias espec\'ificas aos padr\~oes visuais identificados. Diferentemente do AllBot \cite{silvajunior2022allbot}, que executa ordens automaticamente com base em sinais bin\'arios de compra/venda, o CriptoIA posiciona-se como ferramenta de apoio \`{a} decis\~ao humana, priorizando a qualidade e a rastreabilidade do racioc\'inio sobre a automa\c{c}\~ao da execu\c{c}\~ao. Em rela\c{c}\~ao ao trabalho de Franciscon \cite{franciscon2023lstm}, que obteve MAE de 300 USD com modelo LSTM treinado em dados por hora, o CriptoIA opera sem qualquer etapa de treinamento ou dataset rotulado, tornando o sistema imediatamente aplic\'avel a qualquer par ou timeframe dispon\'ivel na Binance sem necessidade de recalibra\c{c}\~ao.
+
+\section{Conclusão Parcial}
+\label{sec:conclusao}
+
+Este trabalho apresentou o CriptoIA, um sistema de análise de criptomoedas que integra indicadores técnicos clássicos com a capacidade multimodal do modelo Google Gemini 2.5 Flash. A arquitetura modular adotada permite a extensão individual de cada componente sem impacto nos demais: novos indicadores podem ser adicionados em \texttt{analise\_tecnica.py}; outros modelos de IA (como GPT-4o ou Claude) podem ser integrados em \texttt{analisador\_ia.py}; e o layout do dashboard pode ser customizado independentemente em \texttt{gerador\_dashboard.py}.
+
+Até a presente etapa do TFG~I, o sistema encontra-se com a implementação completa de todos os quatro módulos do \textit{backend} (coleta de dados, análise técnica, geração de gráfico e análise por IA) e do módulo de \textit{frontend} (geração de dashboard), totalmente funcional e testado manualmente com o par BTC/USDT em diferentes timeframes. Os requisitos funcionais RF01 a RF07 foram implementados e os casos de teste CT01 a CT05 foram executados com sucesso. O CT06 (tratamento de falha de conexão) demonstrou que o sistema responde corretamente com \textit{fallback} estruturado.
+
+O sistema demonstrou funcionalidade consistente em cenários reais de mercado, gerando análises tecnicamente coerentes em tempo adequado para uso prático. A estratégia de \textit{prompt engineering} com interpretações qualitativas automáticas dos indicadores mostrou-se eficaz para enriquecer o contexto enviado ao modelo. A integração multimodal, envio simultâneo de imagem de alta resolução e dados numéricos, representa uma abordagem inovadora que supera sistemas baseados exclusivamente em métricas textuais, conforme evidenciado pela comparação com os trabalhos correlatos apresentados na Seção~\ref{sec:correlatos}.
+
+Como próximas etapas previstas para o TFG~II, destacam-se:
+\begin{enumerate}
+  \item \textbf{Implementação do módulo de backtesting}: avaliação histórica da precisão das recomendações geradas, cobrindo 4 ativos (BTC/USDT, ETH/USDT, SOL/USDT e DOGE/USDT), período de 18 meses (jan/2025--jun/2026) e 4 timeframes (1h, 4h, 1d, 1w), com cálculo de acurácia direcional e retorno acumulado simulado conforme os parâmetros definidos na Seção~\ref{sec:metodologia};
+  \item \textbf{Análise comparativa}: comparação entre o retorno simulado do CriptoIA e a estratégia \textit{buy-and-hold}, além de comparação com modelos de aprendizado supervisionado (LSTM) para predição de direção de preço;
+  \item \textbf{Automação dos testes}: execução automatizada dos casos de teste CT01--CT06 via framework \textit{pytest}, com geração de relatório de cobertura;
+  \item \textbf{Suporte a múltiplos pares}: análise paralela de múltiplos ativos e timeframes com geração de relatório comparativo consolidado;
+  \item \textbf{Interface web}: desenvolvimento de interface com Flask ou FastAPI para facilitar o acesso a usuários não técnicos, com suporte a histórico de análises e visualização dos resultados de backtesting.
+\end{enumerate}
+
+O código-fonte completo do sistema está disponível publicamente no GitHub, com documentação técnica detalhada e instruções de instalação via \texttt{pip}: \url{https://github.com/Teixeirx/tcc1}.
+
+
+\section*{Agradecimentos}
+O autor agradece ao Prof.  Mirkos O. Martins, orientador deste trabalho, pelo suporte, direção e incentivo ao longo do desenvolvimento do CriptoIA, bem como ao corpo docente do curso de Ciência da Computação da Universidade Franciscana.
+
+\begin{thebibliography}{10}
+
+\bibitem{nakamoto2008bitcoin}
+S.~Nakamoto,
+``Bitcoin: A Peer-to-Peer Electronic Cash System,''
+2008. [Online]. Disponível em: \url{https://bitcoin.org/bitcoin.pdf}
+
+\bibitem{coinmarketcap2024}
+CoinMarketCap,
+``Global Cryptocurrency Market Cap Charts,''
+2024. [Online]. Disponível em: \url{https://coinmarketcap.com/charts/}
+
+\bibitem{pinheiro2019mercado}
+J.~L. Pinheiro,
+\textit{Mercado de Capitais: Fundamentos e Técnicas}, 8.~ed.
+São Paulo: Atlas, 2019.
+
+\bibitem{assaf2012mercado}
+A.~Assaf~Neto,
+\textit{Mercado Financeiro}, 11.~ed.
+São Paulo: Atlas, 2012.
+
+\bibitem{murphy1999technical}
+J.~J. Murphy,
+\textit{Technical Analysis of the Financial Markets}.
+Nova York: New York Institute of Finance, 1999.
+
+\bibitem{cavalcante2005mercado}
+F.~Cavalcante, F.~Misumi e R.~Rudge,
+\textit{Mercado de Capitais: O Que É, Como Funciona}, 7.~ed.
+Rio de Janeiro: Elsevier, 2005.
+
+\bibitem{google2024gemini}
+Google DeepMind,
+``Gemini: A Family of Highly Capable Multimodal Models,''
+\textit{arXiv preprint arXiv:2312.11805}, 2024.
+
+\bibitem{maia2024inteligencia}
+R.~Maia e P.~Gonçalves,
+``Inteligência Artificial Generativa Aplicada a Finanças: Uma Revisão Sistemática,''
+\textit{Revista Brasileira de Finanças}, vol.~22, no.~1, pp.~1--24, 2024.
+
+\bibitem{edwards2018technical}
+R.~D. Edwards, J.~Magee e W.~H.~C. Bassetti,
+\textit{Technical Analysis of Stock Trends}, 11.~ed.
+Boca Raton: CRC Press, 2018.
+
+\bibitem{wilder1978new}
+J.~W. Wilder,
+\textit{New Concepts in Technical Trading Systems}.
+Greensboro: Trend Research, 1978.
+
+\bibitem{bollinger2001bollinger}
+J.~Bollinger,
+\textit{Bollinger on Bollinger Bands}.
+Nova York: McGraw-Hill, 2001.
+
+\bibitem{liu2023visual}
+H.~Liu, C.~Li, Q.~Wu e Y.~J. Lee,
+``Visual Instruction Tuning,''
+in \textit{Proc. NeurIPS}, 2023.
+
+\bibitem{binance2024}
+Binance,
+``Binance API Documentation,''
+2024. [Online]. Disponível em: \url{https://binance-docs.github.io/apidocs/}
+
+\bibitem{ccxt2024}
+CCXT,
+``CCXT — CryptoCurrency eXchange Trading Library,''
+2024. [Online]. Disponível em: \url{https://github.com/ccxt/ccxt}
+
+\bibitem{fischer2018deep}
+T.~Fischer e C.~Krauss,
+``Deep learning with long short-term memory networks for financial market predictions,''
+\textit{European Journal of Operational Research}, vol.~270, no.~2, pp.~654--669, 2018.
+
+\bibitem{cavalcante2015computational}
+R.~C. Cavalcante \textit{et al.},
+``Computational Intelligence and Financial Markets: A Survey and Future Directions,''
+\textit{Expert Systems with Applications}, vol.~55, pp.~194--211, 2016.
+
+\bibitem{monteiro2026ssinnova}
+R.~P.~N. Santos e C.~S. Capriglione,
+``Sistema de An\'alise de Criptomoedas em Tempo Real para Apoio \`a Decis\~ao de Investidores,''
+\textit{RECIMA21 --- Revista Cient\'ifica Multidisciplinar}, vol.~7, n.~5, 2026.
+DOI: \url{https://doi.org/10.47820/recima21.v7i5.7927}
+
+\bibitem{silvajunior2022allbot}
+D.~S. Silva~J\'{u}nior, G.~P. Silva e R.~N.~O. Muniz,
+``AllBot: plataforma de rob\^{o}s para investimento no mercado de criptomoedas,''
+Trabalho de Conclus\~ao de Curso (Bacharelado em Engenharia de Computa\c{c}\~ao),
+Instituto Federal de Educa\c{c}\~ao, Ci\^encia e Tecnologia da Para\'{i}ba (IFPB),
+Campina Grande, 2022.
+Dispon\'{i}vel em: \url{http://repositorio.ifpb.edu.br/handle/177683/2465}
+
+\bibitem{franciscon2023lstm}
+K.~F. Franciscon,
+``Predi\c{c}\~ao do pre\c{c}o da bitcoin por meio da incorpora\c{c}\~ao de indicadores t\'{e}cnicos em modelos LSTM,''
+Trabalho de Conclus\~ao de Curso (Bacharelado em Engenharia de Computa\c{c}\~ao),
+Universidade Tecnol\'{o}gica Federal do Paran\'{a} (UTFPR), Toledo, 2023.
+Dispon\'{i}vel em: \url{http://repositorio.utfpr.edu.br/jspui/handle/1/36696}
+
+\end{thebibliography}
+
+\end{document}

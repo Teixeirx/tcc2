@@ -105,6 +105,9 @@ def calcular_bandas_bollinger(
     })
 
 
+MINIMO_CANDLES_INDICADORES = 50
+
+
 def enriquecer_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
     Adiciona todos os indicadores técnicos ao DataFrame de dados históricos.
@@ -120,7 +123,19 @@ def enriquecer_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
     Retorna:
         DataFrame original com colunas de indicadores adicionadas
+
+    Levanta:
+        ValueError : se houver menos de 50 candles (RF03/CT02), pois a MM50
+                     não teria uma janela completa e os indicadores não seriam
+                     confiáveis para análise.
     """
+    if df is None or len(df) < MINIMO_CANDLES_INDICADORES:
+        quantidade = 0 if df is None else len(df)
+        raise ValueError(
+            f"São necessários pelo menos {MINIMO_CANDLES_INDICADORES} candles "
+            f"para calcular os indicadores; recebidos {quantidade}."
+        )
+
     df = df.copy()
 
     # Médias Móveis Simples

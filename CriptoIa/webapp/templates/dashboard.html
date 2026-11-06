@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Visão Geral — CriptoIA{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 28px;">
+    <h1 class="page-title"><span class="page-icone">📊</span> Painel de Controle CriptoIA</h1>
+    <p class="page-subtitle">Sistema inteligente de análise técnica multimodal e avaliação histórica de estratégias</p>
+</div>
+
+<!-- Cards de Resumo -->
+<div class="grid-cards">
+    <div class="card">
+        <div class="card-title">📊 Análises no Histórico</div>
+        <div class="card-value">{{ total_analises }}</div>
+        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 6px;">Registros salvos localmente</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">🪙 Pares Acadêmicos (TCC)</div>
+        <div class="card-value" style="font-size: 1.25rem; font-weight: 600; color: var(--cor-azul);">
+            BTC · ETH · SOL · DOGE
+        </div>
+        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 6px;">+ qualquer par Binance válido</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">⏱️ Timeframes Suportados</div>
+        <div class="card-value" style="font-size: 1.25rem; font-weight: 600; color: var(--cor-roxo);">
+            1h · 4h · 1d · 1w
+        </div>
+        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 6px;">Período TCC: Jan/25 → Jun/26</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">🤖 Modelo Multimodal</div>
+        <div class="card-value" style="font-size: 1.2rem; font-weight: 600; color: var(--cor-verde);">
+            {{ modelo_gemini }}
+        </div>
+        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 6px;">Gráfico PNG + Indicadores numéricos</div>
+    </div>
+</div>
+
+<!-- Ações Rápidas -->
+<div class="card" style="margin-bottom: 28px; background: linear-gradient(180deg, rgba(31, 111, 235, 0.08) 0%, rgba(22, 27, 34, 1) 100%);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <h2 style="font-size: 1.25rem; margin-bottom: 4px;">Executar Nova Análise Técnica</h2>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                Consulte dados da Binance em tempo real, calcule RSI, MACD, MM20/50 e receba recomendação por IA.
+            </p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <a href="{{ url_for('analise') }}" class="btn btn-primary">⚡ Nova Análise</a>
+            <a href="{{ url_for('backtesting') }}" class="btn btn-blue">📈 Módulo de Backtesting</a>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Últimas Análises -->
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 1.1rem; font-weight: 600;">Últimas Análises Realizadas</h3>
+        <a href="{{ url_for('historico') }}" style="color: var(--cor-azul); font-size: 0.85rem; text-decoration: none;">Ver todas &rarr;</a>
+    </div>
+
+    {% if ultimas_analises %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Data/Hora</th>
+                    <th>Par</th>
+                    <th>Timeframe</th>
+                    <th>Preço Atual</th>
+                    <th>Ação IA</th>
+                    <th>Preço Alvo</th>
+                    <th>Justificativa Resumida</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in ultimas_analises %}
+                <tr>
+                    <td style="color: var(--text-muted); font-size: 0.82rem;">{{ a.data }}</td>
+                    <td style="font-weight: 600;">{{ a.par }}</td>
+                    <td><code>{{ a.intervalo }}</code></td>
+                    <td>${{ "{:,.2f}".format(a.preco_atual) if a.preco_atual else 'N/A' }}</td>
+                    <td>
+                        <span class="badge-acao badge-{{ a.acao.lower() }}">{{ a.acao }}</span>
+                    </td>
+                    <td style="color: var(--cor-azul);">{{ a.preco_alvo or '—' }}</td>
+                    <td style="color: var(--text-secondary); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{ a.justificativa }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+        <p>Nenhuma análise realizada ainda.</p>
+        <a href="{{ url_for('analise') }}" class="btn btn-primary" style="margin-top: 12px;">Fazer a primeira análise</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

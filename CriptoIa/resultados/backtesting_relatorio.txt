@@ -1,0 +1,44 @@
+================================================================================
+  RELATÓRIO DE BACKTESTING — CriptoIA
+  Gerado em: 06/11/2026 01:04:01
+================================================================================
+
+METODOLOGIA:
+  - Estratégia: Sinais determinísticos baseados em indicadores técnicos
+  - COMPRAR: MM20>MM50 AND RSI<70 AND MACD>Sinal
+  - VENDER:  MM20<MM50 AND RSI>30 AND MACD<Sinal
+  - Anti look-ahead: sinal do candle t aplicado ao retorno de t+1
+  - Long-only, sem custos de transação
+
+LIMITAÇÕES:
+  - Proxy determinístico; NÃO avalia as respostas multimodais do Gemini
+  - Sem custos de transação (spread, taxas, slippage)
+  - Estratégia long-only (não opera vendido)
+  - Acurácia no candle seguinte, não no prazo de tempo_estimado
+  - Se a coleta falhar no meio, o resultado é marcado como incompleto
+  - Máximo 1000 candles/requisição (paginação implementada)
+
+────────────────────────────────────────────────────────────
+  BTC/USDT | 1d
+────────────────────────────────────────────────────────────
+  Período      : 2025-01-01 -> 2026-06-30
+  Candles      : 546 total | 496 válidos
+  Sinais       : ▲ Comprar=55 | ▼ Vender=53 | ⏸ Manter=388
+  Distribuição : 11.1% compra | 10.7% venda | 78.2% manter
+  Acurácia Dir.: 56.5%
+  Retorno Acum.: 16.2%
+  Max Drawdown : -14.08%
+  Operações    : 71
+  Cobertura    : 100.0% do período estimado
+
+================================================================================
+  CRITÉRIOS DE SUCESSO (Seção IV do TCC)
+================================================================================
+  Ativos avaliados              : 1
+  Acurácia > 50% (por ativo)    : 1
+  Retorno não negativo (por ativo): 1
+  Critério de acurácia atendido : False
+  Critério de retorno atendido  : True
+  Recorte do resumo             : 1d
+  Nota sobre timeframe          : O TCC1 não especifica o timeframe do resumo dos critérios. O recorte 1d (ou todos os timeframes válidos quando não há 1d) é uma escolha operacional deste trabalho, não um parâmetro do TCC.
+  Observação                    : Critério aplicado à estratégia de indicadores (proxy), não às recomendações do Gemini.

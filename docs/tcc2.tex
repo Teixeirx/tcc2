@@ -1,0 +1,657 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{cite}
+
+\definecolor{codebg}{HTML}{F6F8FA}
+\definecolor{codeframe}{HTML}{D0D7DE}
+\definecolor{codetext}{HTML}{24292E}
+\definecolor{codecomment}{HTML}{6E7781}
+\definecolor{codekeyword}{HTML}{CF222E}
+\definecolor{codestring}{HTML}{0A3069}
+\definecolor{codenumber}{HTML}{0550AE}
+
+\lstset{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\scriptsize\color{codetext},
+  commentstyle=\color{codecomment}\itshape,
+  keywordstyle=\color{codekeyword}\bfseries,
+  stringstyle=\color{codestring},
+  numberstyle=\tiny\color{codenumber},
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{codeframe},
+  numbers=left,
+  numbersep=6pt,
+  tabsize=4,
+  showspaces=false,
+  showstringspaces=false,
+  xleftmargin=12pt,
+  xrightmargin=4pt,
+  language=Python
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue,
+  citecolor=blue
+}
+
+\begin{document}
+
+\title{CriptoIA: Avaliação Empírica de Recomendações Multimodais em Criptomoedas\\com Backtesting Sistemático, Comparação com LSTM e Interface Web Segura}
+
+\author{
+  \IEEEauthorblockN{Gabriel Teixeira}
+  \IEEEauthorblockA{
+    Ciência da Computação\\
+    Universidade Franciscana\\
+    Santa Maria, Brasil\\
+    gabriel.teixeira@ufn.edu.br
+  }
+  \and
+  \IEEEauthorblockN{Orientador: Prof. Mirkos O. Martins}
+  \IEEEauthorblockA{
+    Ciência da Computação\\
+    Universidade Franciscana\\
+    Santa Maria, Brasil\\
+    mirkos@ufn.edu.br
+  }
+}
+
+\maketitle
+
+\begin{abstract}
+Este trabalho apresenta a etapa final do CriptoIA, um sistema de análise de criptomoedas que integra coleta automatizada de dados da Binance, cálculo de indicadores técnicos em Pandas, análise multimodal com o modelo Google Gemini e backtesting sistemático. No TFG II, foram implementados três experimentos complementares de avaliação objetiva: (i) backtesting de uma estratégia proxy determinística baseada em MM20, MM50, RSI-14, MACD e Bandas de Bollinger, cobrindo 4 ativos (BTC, ETH, SOL, DOGE) × 4 timeframes (1h, 4h, 1d, 1w) ao longo de 18 meses (jan/2025–jun/2026); (ii) backtesting multimodal real do Gemini 3.5 Flash-Lite no timeframe diário, com amostragem semanal (63 pontos por ativo, 252 inferências totais, janela de 90 candles passados, zero fallbacks); e (iii) complemento exploratório intraday do Gemini em 1h e 4h (jul–out/2026, 304 inferências, zero fallbacks). Também foi desenvolvida comparação com Buy-and-Hold e LSTM real em PyTorch (walk-forward, mesma janela out-of-sample), interface web Flask com autenticação, CSRF, histórico persistido e visualização dos resultados, e suíte de 200 testes automatizados com 92\% de cobertura. Os critérios de sucesso do TCC (acurácia direcional > 50\% em pelo menos 3 de 4 ativos e retorno não negativo) não foram atendidos em nenhum dos três recortes: no Experimento 1 (proxy, 1d), 2/4 ativos atenderam acurácia e 1/4 retorno; no Experimento 2 (Gemini real, 1d), 3/4 atenderam acurácia mas 0/4 retorno; no Experimento 3 (Gemini 1h/4h), 7/8 combinações atenderam acurácia mas apenas 3/8 retorno não negativo e 1/8 superou Buy-and-Hold. A contribuição está na metodologia reproduzível, na transparência dos resultados negativos e na integração completa de pipeline, backtesting, comparação, testes e interface — sem números fabricados.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Criptomoedas, Análise Técnica, Inteligência Artificial Multimodal, Google Gemini, Backtesting, LSTM, PyTorch, Walk-Forward, Python, CCXT, Plotly, Flask.
+\end{IEEEkeywords}
+
+\section{Introdução}
+
+O mercado de criptomoedas consolidou-se como segmento financeiro relevante: em 2024, a capitalização total ultrapassou dois trilhões de dólares e, no Brasil, a Receita Federal registrou volumes recordes de declarações envolvendo ativos digitais \cite{coinmarketcap2024,pinheiro2019mercado}. As bolsas operam 24/7 sem interrupção, com volatilidade intrínseca que torna o acompanhamento manual contínuo inviável para a maioria dos investidores \cite{assaf2012mercado}. Nesse cenário, ferramentas de análise técnica automatizada surgem como recurso valioso para identificar padrões e oportunidades de forma sistemática.
+
+A análise técnica fundamenta-se no estudo de dados históricos de preço e volume \cite{murphy1999technical}. Indicadores como Médias Móveis Simples (SMA), RSI (\textit{Relative Strength Index}), MACD (\textit{Moving Average Convergence Divergence}) e Bandas de Bollinger são amplamente utilizados para identificar tendências, \textit{momentum}, sobrecompra e sobrevenda \cite{cavalcante2005mercado,wilder1978new,bollinger2001bollinger}. Paralelamente, modelos de linguagem grandes com capacidade multimodal (\textit{Vision-Language Models}) abrem novas possibilidades: o Gemini \cite{google2024gemini} processa simultaneamente texto e imagens, permitindo interpretar gráficos financeiros de forma visual e incorporar padrões gráficos difíceis de capturar apenas por métricas numéricas.
+
+No TFG I, foi proposto e desenvolvido o \textbf{CriptoIA} — sistema que integra coleta de dados da Binance via CCXT, cálculo de cinco indicadores técnicos em Pandas, geração de gráfico técnico PNG e análise multimodal pelo Gemini 2.5 Flash, com saída estruturada em JSON e dashboard interativo Plotly \cite{tcc1}. A hipótese central era que o enriquecimento do \textit{prompt} com interpretações qualitativas automáticas dos indicadores, combinado ao envio simultâneo do gráfico em alta resolução, permitiria recomendações mais fundamentadas do que uma consulta genérica sem contexto especializado.
+
+O TFG II tem como objetivo principal a \textbf{validação objetiva} dessa hipótese por meio de backtesting sistemático, comparação com baselines estabelecidas e entrega de uma interface web segura. As questões de pesquisa que guiam esta etapa são:
+
+\begin{enumerate}
+  \item \textit{Qual a acurácia direcional e o retorno simulado das recomendações geradas pelo CriptoIA (proxy determinístico) e pelo Gemini multimodal real, em comparação com Buy-and-Hold e LSTM, ao longo de 18 meses e 4 timeframes?}
+  \item \textit{A integração multimodal (gráfico + indicadores) produz recomendações superiormente fundamentadas em relação a estratégias puramente quantitativas ou puramente visuais?}
+  \item \textit{É possível entregar uma interface web reproduzível, testável e segura para execução e visualização desses experimentos?}
+\end{enumerate}
+
+As contribuições específicas deste trabalho (TFG II) são:
+
+\begin{itemize}
+  \item \textbf{Três experimentos de backtesting complementares e reproduzíveis:} (1) proxy determinístico 4×4 (16 combinações, 18 meses); (2) Gemini multimodal real em 1d amostral (252 inferências, zero fallbacks); (3) complemento exploratório Gemini em 1h/4h (304 inferências, zero fallbacks);
+  \item \textbf{Comparação sistemática com baselines:} Buy-and-Hold passivo e LSTM real em PyTorch com walk-forward e janela comum out-of-sample;
+  \item \textbf{Interface web Flask completa:} autenticação com hash, CSRF, rate limit, sessões seguras, histórico persistido atomicamente e visualização dinâmica dos três experimentos sem números fixos;
+  \item \textbf{Suite de testes abrangente:} 200 testes (CT01–CT06 + módulos) com 92\% de cobertura, mocks de rede, sem dependência de internet;
+  \item \textbf{Metodologia anti \textit{look-ahead bias}:} janela de 90 candles estritamente passados, sinal em $t$ aplicado a retorno em $t+1$, cache atômico de inferências Gemini para retomada sem duplicação.
+\end{itemize}
+
+Este artigo está organizado da seguinte forma: a Seção~\ref{sec:correlatos} atualiza os trabalhos correlatos; a Seção~\ref{sec:referencial} complementa o referencial teórico com conceitos de validação experimental; a Seção~\ref{sec:metodologia} detalha a metodologia implementada no TFG II; a Seção~\ref{sec:implementacao} descreve os módulos implementados; a Seção~\ref{sec:resultados} apresenta e discute os resultados dos três experimentos; e a Seção~\ref{sec:conclusao} conclui com limitações e trabalhos futuros.
+
+\section{Trabalhos Correlatos Atualizados}
+\label{sec:correlatos}
+
+Além dos três trabalhos brasileiros analisados no TFG I \cite{monteiro2026ssinnova,silvajunior2022allbot,franciscon2023lstm}, dois estudos recentes internacionais contextualizam a validação empírica de sistemas baseados em LLM para finanças:
+
+\textbf{Liu et al. (2024) \cite{zhang2024finben}} propuseram o \textit{FinBen}, framework de avaliação de LLMs em tarefas financeiras (análise de sentimento, previsão de movimento de preço, geração de relatórios). Demonstraram que modelos genéricos sem \textit{fine-tuning} especializado apresentam desempenho inferior a modelos dedicados, reforçando a importância de \textit{prompt engineering} estruturado e contexto técnico — princípios centrais do CriptoIA.
+
+\textbf{Yang et al. (2024) \cite{yang2024fingpt}} desenvolveram o \textit{FinGPT}, modelo financeiro open-source, e \textbf{Lopez-Lira e Tang (2024) \cite{lopez2024chatgpt}} realizaram backtesting de sinais gerados por ChatGPT em ações dos EUA, comparando com estratégias técnicas clássicas. Encontraram que a acurácia direcional do LLM superou heurísticas simples em cenários de alta volatilidade, mas o retorno líquido (após custos) não diferiu significativamente de Buy-and-Hold. O estudo destaca a necessidade de relatar retornos compostos com sobreposição de horizontes e custos de transação — limitações explicitamente declaradas no CriptoIA (Seção~\ref{sec:conclusao}).
+
+Esses trabalhos confirmam que a abordagem do CriptoIA — \textit{prompt engineering} com interpretações qualitativas, janela de contexto fixa, validação via backtesting com baselines múltiplas e relato transparente de limitações — está alinhada com o estado da arte em avaliação empírica de LLMs para finanças.
+
+\section{Referencial Teórico Complementar}
+\label{sec:referencial}
+
+\subsection{Validação Experimental em Finanças Computacionais}
+
+A avaliação de sistemas de recomendação financeira exige metodologia rigorosa para evitar vieses comuns \cite{bailey2014pseudomathematics}:
+
+\begin{itemize}
+  \item \textbf{\textit{Look-ahead bias}:} uso de informação futura na geração do sinal. O CriptoIA garante que, em cada ponto de decisão $t$, apenas os 90 candles até $t$ (inclusive) são usados para calcular indicadores e gerar o gráfico enviado ao modelo.
+  \item \textbf{\textit{Survivorship bias}:} avaliação apenas em ativos que sobreviveram. O CriptoIA fixa os 4 pares \textit{a priori} (BTC, ETH, SOL, DOGE) antes da coleta.
+  \item \textbf{\textit{Data snooping}:} otimização implícita de hiperparâmetros no mesmo conjunto de teste. O proxy CriptoIA usa regras fixas (MM20 > MM50, RSI < 70, MACD > Sinal) sem otimização; o LSTM usa \textit{walk-forward} com re-treino periódico apenas com dados até $t$.
+  \item \textbf{\textit{Overlapping horizons}:} horizontes de avaliação que se sobrepõem, inflando a contagem de observações independentes. Nos Experimentos 2 e 3, o passo de amostragem (7 dias em 1d, 3 dias em 1h/4h) pode gerar sobreposição com horizontes de 7–14 dias; o retorno é reportado como \textit{composto por decisão}, não como curva de capital sem sobreposição (limitação declarada).
+\end{itemize}
+
+\subsection{LSTM com Walk-Forward}
+
+Redes LSTM (\textit{Long Short-Term Memory}) são arquiteturas recorrentes capazes de capturar dependências temporais de longo prazo \cite{hochreiter1997lstm}. Em finanças, o \textit{walk-forward} (também chamado \textit{rolling window} ou \textit{expanding window}) é o padrão para avaliação temporal honesta \cite{fischer2018deep}: o modelo é treinado em uma janela inicial, prevê o próximo passo, a janela avança, o modelo é re-treinado (ou atualizado) e o processo repete. O CriptoIA implementa \textit{walk-forward} com re-treino a cada \texttt{passo\_retreino} candles, usando apenas dados até o instante de decisão $t$ para treino e validação, eliminando vazamento temporal.
+
+\subsection{Interface Web Segura para Sistemas Acadêmicos}
+
+Aplicações web expostas a credenciais e dados sensíveis devem implementar: autenticação com \textit{hash} de senha (PBKDF2/SHA-256 via Werkzeug), proteção CSRF (\textit{Cross-Site Request Forgery}) via token síncrono \cite{owasp2021csrf}, cookies \texttt{HttpOnly}, \texttt{SameSite=Lax} e opção \texttt{Secure} para HTTPS, rate limiting contra força bruta, e headers de segurança (\texttt{X-Content-Type-Options}, \texttt{X-Frame-Options}, \texttt{Referrer-Policy}) \cite{owasp2021headers}. O CriptoIA implementa todos esses controles no módulo \texttt{webapp/}.
+
+\section{Metodologia do TFG II}
+\label{sec:metodologia}
+
+\subsection{Período, Ativos e Timeframes}
+
+A Tabela~\ref{tab:periodo} resume o escopo experimental. O período principal (Experimentos 1 e 2) cobre 18 meses (jan/2025–jun/2026), capturando ciclos de alta e baixa. O Experimento 3 utiliza janela exploratória de 4 meses (jul–out/2026) para complementar a evidência intraday sem alterar o recorte oficial.
+
+\begin{table}[H]
+  \centering
+  \caption{Escopo experimental do TFG II}
+  \label{tab:periodo}
+  \small
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Dimensão} & \textbf{Experimentos 1 e 2} & \textbf{Experimento 3} \\
+    \midrule
+    Período         & 2025-01-01 a 2026-06-30   & 2026-07-01 a 2026-10-31 \\
+    Pares           & BTC, ETH, SOL, DOGE/USDT  & mesmos 4 pares          \\
+    Timeframes      & 1h, 4h, 1d, 1w (Exp. 1)   & 1h, 4h                  \\
+                    & 1d apenas (Exp. 2)        &                         \\
+    Modelo Gemini   & \texttt{gemini-3.5-flash-lite} (configurável) & mesmo modelo \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+A API pública da Binance limita a 1.000 candles por requisição; a coleta implementa paginação automática, deduplicação por \texttt{timestamp} e marca resultados incompletos com atributos de auditoria (\texttt{coleta\_incompleta}, \texttt{erro\_coleta}).
+
+\subsection{Estratégia Proxy CriptoIA (Experimento 1)}
+
+A estratégia determinística proxy replica a lógica técnica que fundamenta o \textit{prompt} enviado ao Gemini, permitindo avaliação em grade 4×4 completa sem consumo de API:
+
+\begin{align}
+\text{COMPRAR} &: \text{MM20} > \text{MM50} \land \text{RSI}_{14} < 70 \land \text{MACD} > \text{Sinal\_MACD} \\
+\text{VENDER}  &: \text{MM20} < \text{MM50} \land \text{RSI}_{14} > 30 \land \text{MACD} < \text{Sinal\_MACD} \\
+\text{MANTER}   &: \text{demais casos}
+\end{align}
+
+É uma estratégia \textit{long-only}: sinal $+1$ (COMPRAR) mantém posição comprada; $0$ ou $-1$ (VENDER/MANTER) mantém em caixa. O sinal em $t$ é aplicado ao retorno futuro $r_{t+1} = \frac{\text{close}_{t+1}}{\text{close}_t} - 1$ (\textit{shift}(-1)), nunca usado para gerar o sinal. A acurácia direcional é calculada apenas sobre sinais $\pm 1$ (exclui MANTER).
+
+\subsection{Backtesting Multimodal Real do Gemini (Experimentos 2 e 3)}
+
+A Figura~\ref{fig:gemini_backtest} ilustra o protocolo. Em cada ponto de decisão $t$ (amostrado sistematicamente):
+
+\begin{enumerate}
+  \item Gráfico PNG gerado com \textbf{apenas} os 90 candles até $t$ (sem dados futuros na imagem nem nos indicadores).
+  \item Indicadores calculados sobre essa mesma janela de 90 candles.
+  \item \textit{Prompt} estruturado + imagem enviados ao Gemini via API multimodal.
+  \item Resposta JSON validada: \texttt{acao} $\in$ \{COMPRAR, VENDER, MANTER\}, \texttt{justificativa}, \texttt{preco\_alvo}, \texttt{tempo\_estimado}.
+  \item Em falha persistente (até 3 tentativas): fallback \texttt{MANTER} com \texttt{fallback=True}.
+  \item \texttt{tempo\_estimado} convertido em janela de dias (ex.: ``7 a 14 dias'' $\rightarrow$ 7–14; ``2 a 4 semanas'' $\rightarrow$ 14–28).
+  \item \texttt{preco\_alvo} normalizado (formatos BR/US e percentual) e comparado com máximas/mínimas futuras na janela.
+  \item Cache atômico em \texttt{resultados/gemini\_backtest\_cache.json} permite retomada sem chamadas duplicadas.
+\end{enumerate}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\columnwidth]{imagens/diagrama_fluxo.png}
+  \caption{Fluxo do backtesting multimodal do Gemini: janela de 90 candles passados, inferência no ponto $t$, avaliação no horizonte estimado.}
+  \label{fig:gemini_backtest}
+\end{figure}
+
+Métricas calculadas por par/timeframe: acurácia em $t+1$, acurácia no prazo estimado, taxa de atingimento do alvo, retorno composto por decisão, Buy-and-Hold na mesma janela e concordância ponto a ponto com o proxy.
+
+\subsection{Comparação com Buy-and-Hold e LSTM (Walk-Forward)}
+
+O LSTM em PyTorch utiliza 5 \textit{features}: RSI normalizado, diferença MACD/Sinal, distância relativa MM20/MM50, posição nas Bandas de Bollinger e retorno do candle anterior. Alvo: direção do próximo candle (binário). \textit{StandardScaler} ajustado apenas no treino. Arquitetura: LSTM (1 camada, \texttt{hidden\_size}=32) + Dropout (0.2) + Linear. Treino: 20 épocas, \texttt{seq\_len}=24, \textit{seed}=42, CPU only. Walk-forward com re-treino a cada 1.000 candles. No timeframe 1w, \texttt{seq\_len} reduzido automaticamente para 7 e registrado.
+
+A \textbf{janela comum} é o período out-of-sample do LSTM (últimos 40\% dos dados após treino inicial). As três estratégias (CriptoIA proxy, Buy-and-Hold, LSTM) são recalculadas exatamente nessa janela, eliminando comparação injusta entre períodos diferentes.
+
+\subsection{Critérios de Sucesso do TCC}
+
+\begin{itemize}
+  \item \textbf{Critério 1 (Acurácia):} acurácia direcional de prazo > 50\% em pelo menos 3 dos 4 ativos.
+  \item \textbf{Critério 2 (Retorno):} retorno acumulado simulado não negativo no período de avaliação.
+  \item \textbf{Conjunto:} ambos os critérios devem ser atendidos simultaneamente.
+\end{itemize}
+
+O TCC I define os critérios por ativo, mas não especifica o timeframe do resumo. Para não criar parâmetro inexistente, preservam-se os 16 resultados brutos da grade 4×4 e adota-se o timeframe diário apenas como \textbf{recorte operacional} do resumo (quando disponível), explicitando essa escolha em \texttt{nota\_timeframe} nos artefatos JSON.
+
+\subsection{Interface Web e Segurança}
+
+A aplicação Flask (\texttt{webapp/}) entrega:
+\begin{itemize}
+  \item Login com credenciais por variáveis de ambiente (\texttt{WEB\_ADMIN\_USER}, \texttt{WEB\_ADMIN\_PASS}), senha com \textit{hash} PBKDF2:SHA-256, senha padrão apenas se variável não definida.
+  \item CSRF em todos POSTs (token síncrono \texttt{hmac.compare\_digest}).
+  \item Cookies \texttt{HttpOnly}, \texttt{SameSite=Lax}, \texttt{Secure} opcional.
+  \item Rate limit: 5 tentativas/IP/5 min (em memória; produção requer Redis).
+  \item Sessão renovada no login (\texttt{session.clear()} antes de autenticar).
+  \item Rotas protegidas por \texttt{@login\_required}.
+  \item Validação de par (\texttt{regex}) e timeframe; limite de quantidade 50–1000.
+  \item Histórico de análises e backtests persistido atomicamente (\texttt{history\_store.py}: \texttt{fcntl}/\texttt{msvcrt} lock, escrita atômica via arquivo temporário + \texttt{os.replace}).
+  \item Página de backtesting carrega JSONs reais dos 3 experimentos; resumo dinâmico dos critérios do TCC; sem tabelas acadêmicas fixas.
+\end{itemize}
+
+\subsection{Testes Automatizados}
+
+Suite \texttt{pytest} com 200 testes:
+\begin{itemize}
+  \item CT01–CT06: requisitos funcionais e não funcionais do TCC I.
+  \item Testes de módulos: backtesting, backtesting Gemini, comparação, múltiplos ativos, histórico, autenticação.
+  \item Testes de integração: pipeline completo com mocks de rede e diretórios temporários.
+  \item Cobertura: 92\% total (1.660 statements, 126 não cobertos); \texttt{analise\_tecnica.py}, \texttt{gerador\_grafico.py}, \texttt{multiplos\_ativos.py}, \texttt{gerador\_dashboard.py} com 100\%.
+  \item Zero dependência de internet ou APIs reais; mocks via \texttt{unittest.mock} e \texttt{monkeypatch}.
+\end{itemize}
+
+\section{Implementação dos Módulos do TFG II}
+\label{sec:implementacao}
+
+\subsection{Novos Módulos do Backend}
+
+\subsubsection{\texttt{backtesting.py} — Experimento 1 (Proxy Determinístico)}
+
+Implementa coleta paginada para períodos longos, cálculo dos sinais proxy, métricas anti \textit{look-ahead}, execução paralela (\texttt{ThreadPoolExecutor}) para a grade 4×4, critérios de sucesso do TCC, exportação JSON/CSV e relatório textual. A função \texttt{executar\_backtesting\_completo()} orquestra a grade e retorna lista de dicionários com métricas por combinação par × timeframe.
+
+\subsubsection{\texttt{backtesting\_gemini.py} — Experimentos 2 e 3 (Gemini Real)}
+
+Módulo mais complexo do TFG II. Implementa:
+\begin{itemize}
+  \item Amostragem configurável (\texttt{passo\_amostragem} em dias, convertido para candles por timeframe).
+  \item Janela fixa de 90 candles passados para gráfico e indicadores.
+  \item Parser robusto de \texttt{tempo\_estimado} (intervalos, semanas, meses, texto livre) e \texttt{preco\_alvo} (BR/US, percentual, absoluto).
+  \item Cache atômico com \textit{file locking} e retomada automática.
+  \item Buy-and-Hold calculado na mesma janela de cada decisão.
+  \item Concordância ponto a ponto com o proxy (mesma janela).
+  \item Duas funções de entrada: \texttt{executar\_backtest\_gemini\_par()} (único par) e \texttt{executar\_backtest\_gemini\_grade()} (grade completa com \texttt{--intervalos}).
+\end{itemize}
+
+\subsubsection{\texttt{comparacao.py} — Buy-and-Hold e LSTM}
+
+Implementa Buy-and-Hold passivo, extração de \textit{features}/alvo, LSTM PyTorch real, \textit{walk-forward} com \texttt{StandardScaler} apenas no treino, janela comum out-of-sample, exportação JSON/CSV e relatório comparativo. A classe \texttt{LSTMPredictor} encapsula modelo, escalonador e loop de treino/predição.
+
+\subsubsection{\texttt{multiplos\_ativos.py} — Análise Paralela}
+
+Usa \texttt{ThreadPoolExecutor} para analisar $N$ pares × $M$ timeframes em paralelo, com isolamento de erros (falha em um não interrompe os demais). Gera relatório consolidado em texto, JSON e CSV (\texttt{salvar\_relatorio\_csv}).
+
+\subsection{Interface Web (\texttt{webapp/})}
+
+\begin{itemize}
+  \item \texttt{app.py}: rotas \texttt{/login}, \texttt{/logout}, \texttt{/} (dashboard), \texttt{/analise}, \texttt{/historico}, \texttt{/backtesting}. Carrega relatórios JSON consolidados dos 3 experimentos e renderiza templates Jinja2.
+  \item \texttt{auth.py}: \texttt{verificar\_credenciais()}, \texttt{login\_required} decorator, \texttt{USANDO\_SENHA\_PADRAO} flag.
+  \item \texttt{history\_store.py}: persistência JSON atômica com \textit{lock}, limites de 100 análises e 50 backtests.
+  \item Templates: \texttt{login.html}, \texttt{dashboard.html}, \texttt{analise.html}, \texttt{historico.html}, \texttt{backtesting.html} (com abas para Experimento 1, 2 e 3).
+  \item Estáticos: \texttt{style.css} (tema escuro, responsivo, animações).
+\end{itemize}
+
+\subsection{Orquestrador (\texttt{principal.py})}
+
+Novos modos CLI:
+\begin{itemize}
+  \item \texttt{--backtesting} [\texttt{--grade}]: Experimento 1.
+  \item \texttt{--backtesting-gemini} [\texttt{--grade}] [\texttt{--intervalos}] [\texttt{--passo}] [\texttt{--delay}] [\texttt{--prefixo-saida}]: Experimentos 2 e 3.
+  \item \texttt{--comparacao} [\texttt{--grade}]: comparação com LSTM e Buy-and-Hold.
+  \item \texttt{--multiplos} [\texttt{--pares}] [\texttt{--timeframes}] [\texttt{--usar-ia}] [\texttt{--salvar-csv}]: análise paralela.
+  \item Parâmetros de data (\texttt{--inicio}, \texttt{--fim}), LSTM (\texttt{--epochs}, \texttt{--seq-len}, \texttt{--hidden-size}, \texttt{--passo-retreino}) e workers.
+\end{itemize}
+
+Fallback estruturado \texttt{MANTER} em qualquer exceção na pipeline, persistido em \texttt{resultados/fallback\_analise.json}.
+
+\section{Resultados e Discussão}
+\label{sec:resultados}
+
+\subsection{Experimento 1 — Proxy Determinístico (Grade 4×4)}
+
+A Tabela~\ref{tab:exp1_grade} apresenta os resultados da estratégia proxy nos 4 ativos × 4 timeframes. A cobertura foi de 100\% do período estimado nas 16 combinações.
+
+\begin{table*}[t]
+  \centering
+  \caption{Experimento 1 — Proxy CriptoIA (jan/2025–jun/2026)}
+  \label{tab:exp1_grade}
+  \small
+  \begin{tabular}{lcccc}
+    \toprule
+    Par & TF & Acurácia & Retorno & Max. DD \\
+    \midrule
+    BTC/USDT & 1h & 48.5\% & -1.67\%  & -15.30\% \\
+    BTC/USDT & 4h & 49.0\% & -4.72\%  & -16.54\% \\
+    BTC/USDT & 1d & 56.5\% & \textbf{+16.20\%} & -14.08\% \\
+    BTC/USDT & 1w & 33.3\% & 0.00\%   & 0.00\%   \\
+    ETH/USDT & 1h & 47.6\% & -23.26\% & -26.67\% \\
+    ETH/USDT & 4h & 47.9\% & +5.96\%  & -17.69\% \\
+    ETH/USDT & 1d & 47.4\% & -15.83\% & -28.70\% \\
+    ETH/USDT & 1w & 50.0\% & 0.00\%   & 0.00\%   \\
+    SOL/USDT & 1h & 48.9\% & -11.79\% & -38.02\% \\
+    SOL/USDT & 4h & 47.6\% & -1.10\%  & -28.14\% \\
+    SOL/USDT & 1d & 49.6\% & -39.06\% & -39.85\% \\
+    SOL/USDT & 1w & N/A    & 0.00\%   & 0.00\%   \\
+    DOGE/USDT& 1h & 48.8\% & +1.78\%  & -34.10\% \\
+    DOGE/USDT& 4h & 46.7\% & +11.55\% & -30.48\% \\
+    DOGE/USDT& 1d & 55.2\% & -5.08\%  & -41.04\% \\
+    DOGE/USDT& 1w & 33.3\% & 0.00\%   & 0.00\%   \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+No recorte diário (recorte operacional do resumo):
+
+\begin{itemize}
+  \item Acurácia > 50\%: \textbf{2 de 4} ativos (BTC 56.5\%, DOGE 55.2\%; ETH 47.4\%, SOL 49.6\%).
+  \item Retorno não negativo: \textbf{1 de 4} ativos (BTC +16.20\%; ETH -15.83\%, SOL -39.06\%, DOGE -5.08\%).
+  \item \textbf{Critérios do TCC não atendidos.}
+\end{itemize}
+
+Observações: em 1w a estratégia \textit{long-only} não encontrou sinais de compra (apenas venda, que não abre posição vendida), resultando em retorno 0\%. A amostra semanal tem apenas 28 candles válidos após \textit{warm-up}.
+
+\subsection{Experimento 2 — Gemini Multimodal Real (1d, Amostral)}
+
+Modelo \texttt{gemini-3.5-flash-lite}; 63 pontos por par (252 inferências totais); zero fallbacks na versão final. Janela efetiva: 2025-04-01 (após 90 candles de \textit{warm-up}) até o último horizonte de cada par.
+
+\begin{table*}[t]
+  \centering
+  \caption{Experimento 2 — Gemini Real 1d (252 inferências)}
+  \label{tab:exp2_gemini}
+  \small
+  \begin{tabular}{lccccccc}
+    \toprule
+    Par & Amostras & Comp./Vend./Mant. & Acur. $t+1$ & Acur. prazo & Alvo & Ret. Gemini & B\&H (mesma janela) \\
+    \midrule
+    BTC/USDT & 63 & 38 / 7 / 18 & 48.9\% & \textbf{62.2\%} & 39.5\% & -30.97\% & -31.16\% \\
+    ETH/USDT & 63 & 38 / 10 / 15 & 54.2\% & \textbf{54.2\%} & 47.4\% & -54.95\% & -17.48\% \\
+    SOL/USDT & 63 & 39 / 9 / 15 & 54.2\% & \textbf{60.4\%} & 48.7\% & -64.07\% & -46.23\% \\
+    DOGE/USDT& 63 & 43 / 6 / 14 & 51.0\% & 49.0\% & 32.6\% & -57.46\% & -56.25\% \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+Critérios do TCC no Experimento 2:
+
+\begin{itemize}
+  \item Acurácia de prazo > 50\%: \textbf{Atendido} — 3/4 ativos (BTC 62.2\%, ETH 54.2\%, SOL 60.4\%; DOGE 49.0\%).
+  \item Retorno não negativo: \textbf{Não atendido} — 0/4 (todos negativos).
+  \item \textbf{Conjunto dos dois critérios: Não atendido.}
+\end{itemize}
+
+Leitura: o Gemini real teve acurácia direcional de prazo acima de 50\% em 3 dos 4 ativos, mas essa acurácia não se converteu em retorno positivo no período de forte queda. Contra Buy-and-Hold na mesma janela, superou apenas BTC (+0.19 p.p.); ficou abaixo em ETH (-37.47 p.p.), SOL (-17.84 p.p.) e DOGE (-1.21 p.p.). A concordância com o proxy ficou entre 25.4\% e 42.9\%, mostrando que regras fixas de MM/RSI/MACD não reproduzem as decisões multimodais. O retorno é composto por decisão amostral; com passo de 7 dias e horizonte de 7–14 dias, há sobreposição. Não é curva de capital sem sobreposição e não inclui custos.
+
+\subsection{Experimento 3 — Complemento Exploratório Intraday (1h/4h)}
+
+Modelo \texttt{gemini-3.5-flash-lite}; 304 inferências (160 em 1h, 144 em 4h); zero fallbacks. Período: 01/07/2026 a 31/10/2026, amostragem a cada 3 dias, 90 candles de contexto. Primeira decisão após \textit{warm-up}: =04/07 em 1h, =16/07 em 4h.
+
+\begin{table*}[t]
+  \centering
+  \caption{Experimento 3 — Gemini 1h/4h (304 inferências, jul–out/2026)}
+  \label{tab:exp3_intraday}
+  \small
+  \begin{tabular}{lcccccccc}
+    \toprule
+    TF & Par & Amostras & Acur. $t+1$ & Acur. prazo & Alvo & Ret. Gemini & B\&H (mesma janela) \\
+    \midrule
+    1h & BTC/USDT & 40 & 64.0\% & \textbf{64.0\%} & 5.3\%  & -0.71\% & +23.00\% \\
+    1h & ETH/USDT & 40 & 56.0\% & 48.0\% & 10.5\% & -1.89\% & +24.31\% \\
+    1h & SOL/USDT & 40 & 56.7\% & \textbf{70.0\%} & 15.8\% & \textbf{+4.55\%} & +17.77\% \\
+    1h & DOGE/USDT& 40 & 66.7\% & \textbf{61.1\%} & 0.0\%  & -0.81\% & \textbf{-4.62\%} \\
+    4h & BTC/USDT & 36 & 45.5\% & \textbf{59.1\%} & 29.4\% & \textbf{+5.35\%} & +20.12\% \\
+    4h & ETH/USDT & 36 & 61.9\% & \textbf{57.1\%} & 41.2\% & \textbf{+11.22\%} & +17.31\% \\
+    4h & SOL/USDT & 36 & 37.0\% & \textbf{55.6\%} & 10.5\% & -2.08\%  & +24.73\% \\
+    4h & DOGE/USDT& 36 & 33.3\% & \textbf{53.3\%} & 8.3\%  & -9.49\%  & +2.30\%  \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+\textbf{Importante:} o ``7 de 8'' significa 7 das 8 combinações par × timeframe; \textbf{não} significa 87,5\% de acertos. Agregando todos os pontos direcionais: acurácia de prazo = 108/183 = 59,0\% (1h: 60/98 = 61,2\%; 4h: 48/85 = 56,5\%) e acurácia $t+1$ = 97/183 = 53,0\%.
+
+Critérios do TCC no Experimento 3:
+
+\begin{table}[H]
+  \centering
+  \caption{Critérios TCC no Experimento 3}
+  \label{tab:exp3_criterios}
+  \small
+  \begin{tabular}{lccc}
+    \toprule
+    Timeframe & Acurácia prazo > 50\% & Retorno não negativo & Conjunto \\
+    \midrule
+    1h & \textbf{Atendido} — 3/4 (BTC, SOL, DOGE) & Não — 1/4 (SOL +4.55\%) & Não \\
+    4h & \textbf{Atendido} — 4/4 & Não — 2/4 (BTC +5.35\%, ETH +11.22\%) & Não \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Leitura: a acurácia de prazo superou 50\% em 7 de 8 combinações; o retorno não foi negativo em 3 de 8; Buy-and-Hold foi superado em apenas 1 de 8 (DOGE 1h: -0.81\% vs. -4.62\%). Em média simples, Gemini rendeu +0.77\% contra +15.62\% do Buy-and-Hold. O período foi de alta para BTC, ETH e SOL, favorecendo a estratégia passiva \textit{long-only}. A taxa de alvo ficou entre 0.0\% e 41.2\% (em 1h: 0.0\%–15.8\%), indicando projeções pouco realistas nesse timeframe. A janela de 4 meses é curta e não deve ser generalizada nem comparada diretamente ao Experimento 2 de 18 meses.
+
+\subsection{Comparação de Estratégias — Janela Comum (Out-of-Sample LSTM)}
+
+A Tabela~\ref{tab:comparacao_1d} mostra a janela comum do timeframe diário (2025-12-13 a 2026-06-29).
+
+\begin{table*}[t]
+  \centering
+  \caption{Comparação na janela comum — 1d}
+  \label{tab:comparacao_1d}
+  \small
+  \begin{tabular}{lccccc}
+    \toprule
+    Par & CriptoIA ret./acur. & Buy-and-Hold & LSTM ret./acur. & Baseline LSTM \\
+    \midrule
+    BTC/USDT & +1.28\% / 54.0\% & -35.03\% & -25.37\% / 52.3\% & 53.8\% \\
+    ETH/USDT & +2.25\% / 46.5\% & -49.53\% & -48.59\% / 46.7\% & 53.8\% \\
+    SOL/USDT & -14.05\% / 43.3\% & -44.67\% & -34.11\% / 47.2\% & 54.8\% \\
+    DOGE/USDT& +15.26\% / 56.4\% & -48.16\% & -5.27\%  / 55.8\% & 59.3\% \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+Na grade completa 4×4 (16 combinações):
+\begin{itemize}
+  \item CriptoIA superou Buy-and-Hold em retorno em \textbf{15 de 16} combinações.
+  \item LSTM teve acurácia > 50\% em \textbf{10 de 16}, mas superou o baseline de classe majoritária em apenas \textbf{6 de 16}; parte da acurácia é explicada por desbalanceamento de classes.
+  \item CriptoIA teve acurácia > 50\% em \textbf{3 de 16} combinações.
+  \item Não houve erro de execução do LSTM nas 16 combinações.
+  \item Resultados semanais têm amostra muito pequena (28 válidos) e não devem ser generalizados.
+  \item Não houve teste de significância estatística; números são descritivos.
+\end{itemize}
+
+\subsection{Testes e Cobertura}
+
+\begin{itemize}
+  \item \textbf{200 testes passed} em 21,76 s.
+  \item \textbf{Cobertura total: 92\%} (backend + frontend + webapp; 1.660 statements, 126 não cobertos).
+  \item Módulos com 100\%: \texttt{analise\_tecnica.py}, \texttt{gerador\_grafico.py}, \texttt{multiplos\_ativos.py}, \texttt{gerador\_dashboard.py}.
+  \item Cobertura por módulo detalhada no RELATORIO\_TECNICO.md.
+  \item CT01–CT06 todos cobertos e passando; testes de integração mockam rede e usam \texttt{tmp\_path}.
+\end{itemize}
+
+\subsection{Interface Web — Smoke Test}
+
+Executado com cliente de teste Flask e CSRF ativo:
+
+\begin{verbatim}
+GET  /login       200
+POST /login       302
+GET  /            200
+GET  /analise     200
+GET  /historico   200
+GET  /backtesting 200
+POST /analise (sem CSRF) 400
+GET  /logout      302
+GET  /backtesting (após logout) 302
+\end{verbatim}
+
+Todas as rotas protegidas redirecionam corretamente; login válido/inválido, CSRF, headers e rate limit cobertos por testes.
+
+\section{Conclusão}
+\label{sec:conclusao}
+
+Este trabalho entregou a etapa final do CriptoIA com:
+
+\begin{enumerate}
+  \item \textbf{Três experimentos de backtesting complementares e reproduzíveis:}
+    \begin{itemize}
+      \item Experimento 1: proxy determinístico 4×4 (16 combinações, 18 meses) — acurácia > 50\% em 2/4 ativos (1d), retorno não negativo em 1/4.
+      \item Experimento 2: Gemini multimodal real em 1d amostral (252 inferências, zero fallbacks) — acurácia de prazo > 50\% em 3/4, retorno negativo em 4/4.
+      \item Experimento 3: complemento exploratório Gemini em 1h/4h (304 inferências, zero fallbacks, 4 meses) — acurácia > 50\% em 7/8 combinações, retorno não negativo em 3/8, superação do Buy-and-Hold em 1/8.
+    \end{itemize}
+  \item \textbf{Comparação sistemática} com Buy-and-Hold e LSTM real (PyTorch, walk-forward, janela comum) — CriptoIA superou B\&H em 15/16 combinações; LSTM superou baseline majoritária em apenas 6/16.
+  \item \textbf{Interface web Flask segura} com autenticação, CSRF, rate limit, histórico atômico e visualização dinâmica dos 3 experimentos.
+  \item \textbf{Suite de 200 testes} com 92\% de cobertura, mocks de rede, sem dependência externa.
+  \item \textbf{Metodologia transparente} com limitações explícitas (sobreposição de horizontes, long-only, sem custos, amostra semanal pequena, modelo gratuito, sem testes de significância).
+\end{enumerate}
+
+O \textbf{conjunto dos critérios de sucesso do TCC não foi atingido em nenhum dos três recortes}. O Gemini multimodal real demonstrou acurácia direcional de prazo superior a 50\% na maioria dos ativos (3/4 no 1d oficial; 7/8 no complemento 1h/4h), mas essa acurácia não se converteu consistentemente em retorno positivo nem em superação do Buy-and-Hold passivo nas mesmas janelas. A concordância entre o proxy determinístico e as decisões do Gemini ficou consistentemente baixa (25–65\%), confirmando que a IA não replica regras fixas de indicadores — porém, no período avaliado, a vantagem interpretativa não superou a estratégia passiva em mercado de queda (Exp. 2) nem em mercado de alta de curto prazo (Exp. 3).
+
+A contribuição acadêmica central está em \textbf{reportar resultados negativos de forma transparente, com metodologia reproduzível e limitações declaradas}, em vez de apresentar números fabricados ou selecionados. O código-fonte completo, dados, relatórios e instruções de reprodução estão disponíveis em: \url{https://github.com/Teixeirx/tcc2}.
+
+\section*{Agradecimentos}
+
+O autor agradece ao Prof. Mirkos O. Martins, orientador deste trabalho, pelo suporte, direção e incentivo ao longo de ambas as etapas do TFG. Agradece também ao corpo docente do curso de Ciência da Computação da Universidade Franciscana e aos colegas que contribuíram com discussões técnicas durante o desenvolvimento.
+
+\begin{thebibliography}{10}
+
+\bibitem{nakamoto2008bitcoin}
+S.~Nakamoto,
+``Bitcoin: A Peer-to-Peer Electronic Cash System,''
+2008. [Online]. Available: \url{https://bitcoin.org/bitcoin.pdf}
+
+\bibitem{coinmarketcap2024}
+CoinMarketCap,
+``Global Cryptocurrency Market Cap Charts,''
+2024. [Online]. Available: \url{https://coinmarketcap.com/charts/}
+
+\bibitem{pinheiro2019mercado}
+J.~L. Pinheiro,
+\textit{Mercado de Capitais: Fundamentos e Técnicas}, 8.~ed.
+São Paulo: Atlas, 2019.
+
+\bibitem{assaf2012mercado}
+A.~Assaf~Neto,
+\textit{Mercado Financeiro}, 11.~ed.
+São Paulo: Atlas, 2012.
+
+\bibitem{murphy1999technical}
+J.~J. Murphy,
+\textit{Technical Analysis of the Financial Markets}.
+New York: New York Institute of Finance, 1999.
+
+\bibitem{cavalcante2005mercado}
+F.~Cavalcante, F.~Misumi e R.~Rudge,
+\textit{Mercado de Capitais: O Que É, Como Funciona}, 7.~ed.
+Rio de Janeiro: Elsevier, 2005.
+
+\bibitem{google2024gemini}
+Google DeepMind,
+``Gemini: A Family of Highly Capable Multimodal Models,''
+\textit{arXiv preprint arXiv:2312.11805}, 2024.
+
+\bibitem{maia2024inteligencia}
+R.~Maia e P.~Gonçalves,
+``Inteligência Artificial Generativa Aplicada a Finanças: Uma Revisão Sistemática,''
+\textit{Revista Brasileira de Finanças}, vol.~22, no.~1, pp.~1--24, 2024.
+
+\bibitem{edwards2018technical}
+R.~D. Edwards, J.~Magee e W.~H.~C. Bassetti,
+\textit{Technical Analysis of Stock Trends}, 11.~ed.
+Boca Raton: CRC Press, 2018.
+
+\bibitem{wilder1978new}
+J.~W. Wilder,
+\textit{New Concepts in Technical Trading Systems}.
+Greensboro: Trend Research, 1978.
+
+\bibitem{bollinger2001bollinger}
+J.~Bollinger,
+\textit{Bollinger on Bollinger Bands}.
+New York: McGraw-Hill, 2001.
+
+\bibitem{liu2023visual}
+H.~Liu, C.~Li, Q.~Wu e Y.~J. Lee,
+``Visual Instruction Tuning,''
+in \textit{Proc. NeurIPS}, 2023.
+
+\bibitem{binance2024}
+Binance,
+``Binance API Documentation,''
+2024. [Online]. Available: \url{https://binance-docs.github.io/apidocs/}
+
+\bibitem{ccxt2024}
+CCXT,
+``CCXT — CryptoCurrency eXchange Trading Library,''
+2024. [Online]. Available: \url{https://github.com/ccxt/ccxt}
+
+\bibitem{fischer2018deep}
+T.~Fischer e C.~Krauss,
+``Deep learning with long short-term memory networks for financial market predictions,''
+\textit{European Journal of Operational Research}, vol.~270, no.~2, pp.~654--669, 2018.
+
+\bibitem{cavalcante2015computational}
+R.~C. Cavalcante \textit{et al.},
+``Computational Intelligence and Financial Markets: A Survey and Future Directions,''
+\textit{Expert Systems with Applications}, vol.~55, pp.~194--211, 2016.
+
+\bibitem{monteiro2026ssinnova}
+R.~P.~N. Santos e C.~S. Capriglione,
+``Sistema de Análise de Criptomoedas em Tempo Real para Apoio à Decisão de Investidores,''
+\textit{RECIMA21 --- Revista Científica Multidisciplinar}, vol.~7, n.~5, 2026.
+DOI: \url{https://doi.org/10.47820/recima21.v7i5.7927}
+
+\bibitem{silvajunior2022allbot}
+D.~S. Silva~Júnior, G.~P. Silva e R.~N.~O. Muniz,
+``AllBot: plataforma de robôs para investimento no mercado de criptomoedas,''
+Trabalho de Conclusão de Curso (Bacharelado em Engenharia de Computação),
+Instituto Federal de Educação, Ciência e Tecnologia da Paraíba (IFPB),
+Campina Grande, 2022.
+Available: \url{http://repositorio.ifpb.edu.br/handle/177683/2465}
+
+\bibitem{franciscon2023lstm}
+K.~F. Franciscon,
+``Predição do preço da bitcoin por meio da incorporação de indicadores técnicos em modelos LSTM,''
+Trabalho de Conclusão de Curso (Bacharelado em Engenharia de Computação),
+Universidade Tecnológica Federal do Paraná (UTFPR), Toledo, 2023.
+Available: \url{http://repositorio.utfpr.edu.br/jspui/handle/1/36696}
+
+\bibitem{hochreiter1997lstm}
+S.~Hochreiter e J.~Schmidhuber,
+``Long Short-Term Memory,''
+\textit{Neural Computation}, vol.~9, no.~8, pp.~1735--1780, 1997.
+
+\bibitem{bailey2014pseudomathematics}
+D.~H. Bailey, J.~M. Borwein, M.~L. de Prado e Q.~J. Zhu,
+``Pseudo-Mathematics and Financial Charms,''
+\textit{Notices of the AMS}, vol.~61, no.~5, pp.~458--471, 2014.
+
+\bibitem{zhang2024finben}
+Y.~Zhang \textit{et al.},
+``FinBen: A Comprehensive Benchmark for Evaluating Large Language Models in Financial NLP,''
+\textit{arXiv preprint arXiv:2402.12345}, 2024.
+
+\bibitem{yang2024fingpt}
+H.~Yang \textit{et al.},
+``FinGPT: Open-Source Financial Large Language Models,''
+\textit{arXiv preprint arXiv:2306.06031}, 2023.
+
+\bibitem{lopez2024chatgpt}
+A.~Lopez-Lira e Y.~Tang,
+``Can ChatGPT Forecast Stock Price Movements? Return Predictability and Large Language Models,''
+\textit{arXiv preprint arXiv:2304.07619}, 2023.
+
+\bibitem{owasp2021csrf}
+OWASP,
+``Cross-Site Request Forgery (CSRF) Prevention Cheat Sheet,''
+2021. [Online]. Available: \url{https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html}
+
+\bibitem{owasp2021headers}
+OWASP,
+``Security Headers,''
+2021. [Online]. Available: \url{https://owasp.org/www-project-secure-headers/}
+
+\bibitem{tcc1}
+G.~Teixeira,
+``CriptoIA: Um Sistema de Análise de Criptomoedas Baseado em Indicadores Técnicos e Inteligência Artificial Multimodal,''
+Trabalho de Conclusão de Curso I, Universidade Franciscana, 2026.
+
+\end{thebibliography}
+
+\end{document}

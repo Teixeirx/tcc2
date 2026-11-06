@@ -10,9 +10,13 @@ Gera um arquivo HTML completo com:
 """
 
 import json
+import os
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+# Diretório raiz do projeto (dois níveis acima de frontend/)
+_DIR_RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _formatar_preco(valor: float) -> str:
@@ -53,7 +57,7 @@ def _obter_cor_acao(acao: str) -> dict:
     return mapa_cores.get(acao.upper(), mapa_cores["MANTER"])
 
 
-def _gerar_grafico_plotly(df: pd.DataFrame) -> str:
+def _gerar_grafico_plotly(df: pd.DataFrame, include_plotlyjs: bool | str = True) -> str:
     """
     Gera o gráfico interativo de candlestick com Plotly usando dados do Pandas.
 
@@ -209,7 +213,7 @@ def _gerar_grafico_plotly(df: pd.DataFrame) -> str:
 
     return figura.to_html(
         full_html=False,
-        include_plotlyjs="cdn",
+        include_plotlyjs=include_plotlyjs,
         config={
             "displayModeBar": True,
             "modeBarButtonsToRemove": ["toImage", "sendDataToCloud"],
@@ -236,7 +240,9 @@ def gerar_dashboard(
     analise_ia: dict,
     indicadores: dict,
     par: str = "BTC/USDT",
-    horario_analise: str = ""
+    horario_analise: str = "",
+    caminho_saida: str = os.path.join(_DIR_RAIZ, "resultados", "dashboard.html"),
+    include_plotlyjs: bool | str = True
 ) -> str:
     """
     Gera o arquivo HTML do dashboard completo.
@@ -268,7 +274,7 @@ def gerar_dashboard(
     sinal_variacao = "+" if variacao_24h >= 0 else ""
     cor_variacao = "#3fb950" if variacao_24h >= 0 else "#f85149"
 
-    grafico_html = _gerar_grafico_plotly(df)
+    grafico_html = _gerar_grafico_plotly(df, include_plotlyjs=include_plotlyjs)
 
     rsi_valor = indicadores.get("rsi14")
     rsi_status = (
@@ -864,7 +870,6 @@ def gerar_dashboard(
 </html>
 """
 
-    caminho_saida = "dashboard.html"
     with open(caminho_saida, "w", encoding="utf-8") as arquivo:
         arquivo.write(html)
 
@@ -873,4 +878,4 @@ def gerar_dashboard(
 
 
 # Constante usada no template HTML
-MODELO_GEMINI = "gemini-2.5-flash"
+MODELO_GEMINI = "gemini-3.5-flash-lite"
