@@ -1,0 +1,539 @@
+{% extends "base.html" %}
+
+{% block title %}Backtesting e Comparação — CriptoIA{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 24px;">
+    <h1 class="page-title"><span class="page-icone">📈</span> Módulo de Backtesting e Comparação de Estratégias</h1>
+    <p class="page-subtitle">
+        Avaliação histórica sistemática com prevenção de look-ahead bias, comparação com
+        Buy-and-Hold e uma rede LSTM real no mesmo período out-of-sample.
+    </p>
+</div>
+
+<!-- Metodologia e Limitações -->
+<div class="card" style="margin-bottom: 24px; border-left: 4px solid var(--cor-azul);">
+    <h3 style="font-size: 1.05rem; font-weight: 600; margin-bottom: 8px;">📐 Metodologia Acadêmica (TCC Seção IV)</h3>
+    <ul style="color: var(--text-secondary); font-size: 0.88rem; padding-left: 20px; line-height: 1.6;">
+        <li><strong>Anti look-ahead bias:</strong> o sinal gerado no fechamento do candle <code>t</code> é aplicado ao retorno <code>close-to-close</code> de <code>t+1</code>, via retorno futuro <code>shift(-1)</code>.</li>
+        <li><strong>CriptoIA (proxy de indicadores):</strong> COMPRAR (MM20 &gt; MM50, RSI &lt; 70, MACD &gt; Sinal) | VENDER (MM20 &lt; MM50, RSI &gt; 30, MACD &lt; Sinal) | MANTER (demais).</li>
+        <li><strong>Modelo Supervisionado:</strong> rede LSTM em PyTorch (<code>torch</code>), com normalização ajustada apenas no treino e walk-forward com re-treino periódico. A decisão usa somente dados até o candle corrente.</li>
+        <li><strong>Comparação justa:</strong> as três estratégias são avaliadas na mesma janela out-of-sample (últimos 40% dos dados, após o treino inicial do LSTM).</li>
+        <li><strong>Três experimentos distintos:</strong> o Experimento 1 (grade 4×4) usa a estratégia CriptoIA como proxy determinístico e <strong>não reproduz as respostas multimodais do Gemini</strong>; o Experimento 2 faz inferência real do Gemini em amostragem semanal do timeframe diário e é o resultado oficial; o Experimento 3 complementa com inferência real em <code>1h</code>/<code>4h</code> numa janela curta exploratória.</li>
+        <li><strong>Limitações:</strong> sem custos de transação (taxas/slippage); estratégia long-only; no timeframe semanal a amostra é pequena; o Experimento 3 cobre apenas 4 meses e não substitui o recorte oficial de 18 meses.</li>
+    </ul>
+</div>
+
+<!-- Formulário de Simulação sob Demanda -->
+<div class="card" style="margin-bottom: 28px;">
+    <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 14px;">⚡ Simulação Sob Demanda (Qualquer Par Válido)</h3>
+    <form method="POST" action="{{ url_for('backtesting') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div class="form-group">
+                <label class="form-label" for="par">Par</label>
+                <input type="text" id="par" name="par" class="form-control"
+                       value="{{ par_selecionado or 'BTC/USDT' }}"
+                       placeholder="BTC/USDT, ETH/USDT, etc." required
+                       list="sugestoes-pares-backtest">
+                <datalist id="sugestoes-pares-backtest">
+                    {% for p in pares_tcc %}<option value="{{ p }}">{% endfor %}
+                </datalist>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="intervalo">Timeframe</label>
+                <select id="intervalo" name="intervalo" class="form-select">
+                    {% for tf in timeframes_tcc %}
+                    <option value="{{ tf }}" {% if intervalo_selecionado == tf or (not intervalo_selecionado and tf == '1d') %}selected{% endif %}>
+                        {{ tf }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end;">
+            <button type="submit" class="btn btn-primary">
+                📊 Executar Simulação Comparativa
+            </button>
+        </div>
+    </form>
+    <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 12px;">
+        A execução usa dados reais da Binance e o período padrão do TCC (01/01/2025 a 30/06/2026).
+        O treinamento do LSTM pode levar alguns segundos/minutos, dependendo do timeframe.
+    </p>
+</div>
+
+<!-- Resultado da Simulação Sob Demanda -->
+{% if resultado_simulacao %}
+<div class="card" style="margin-bottom: 28px; border-color: var(--cor-verde);">
+    <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 14px; color: var(--cor-verde);">
+        ✅ Resultado da Simulação: {{ resultado_simulacao.par }} ({{ resultado_simulacao.intervalo }})
+    </h3>
+
+    {% if resultado_simulacao.erro %}
+        <div class="alert alert-danger">{{ resultado_simulacao.erro }}</div>
+    {% else %}
+        {% set comum = resultado_simulacao.periodo_comum %}
+        {% if comum and not comum.erro %}
+        <div style="background: rgba(88, 166, 255, 0.08); border: 1px solid rgba(88, 166, 255, 0.2); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.85rem; color: var(--text-secondary);">
+            <strong>Janela comum de avaliação:</strong>
+            {{ comum.data_inicio }} → {{ comum.data_fim }}
+            · As métricas abaixo usam o mesmo período para as três estratégias.
+        </div>
+
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Estratégia</th>
+                        <th>Retorno Acumulado</th>
+                        <th>Acurácia Direcional</th>
+                        <th>Máximo Drawdown</th>
+                        <th>Operações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set crip = comum.criptoia %}
+                    <tr>
+                        <td style="font-weight: 700; color: var(--cor-verde);">🪙 CriptoIA (Indicadores)</td>
+                        <td style="font-weight: 700; color: {{ '#3fb950' if crip.retorno_total_pct is not none and crip.retorno_total_pct >= 0 else '#f85149' }};">
+                            {{ crip.retorno_total_pct }}%
+                        </td>
+                        <td>
+                            {{ "{:.1f}%".format(crip.acuracia_direcional * 100) if crip.acuracia_direcional is not none else 'N/A' }}
+                        </td>
+                        <td style="color: var(--cor-vermelho);">{{ crip.max_drawdown_pct }}%</td>
+                        <td>{{ crip.n_operacoes or '—' }}</td>
+                    </tr>
+
+                    {% set bnh = comum.buy_and_hold %}
+                    <tr>
+                        <td style="font-weight: 700; color: var(--cor-azul);">📈 Buy-and-Hold</td>
+                        <td style="font-weight: 700; color: {{ '#3fb950' if bnh.retorno_total_pct is not none and bnh.retorno_total_pct >= 0 else '#f85149' }};">
+                            {{ bnh.retorno_total_pct }}%
+                        </td>
+                        <td>— (Passivo)</td>
+                        <td style="color: var(--cor-vermelho);">{{ bnh.max_drawdown_pct }}%</td>
+                        <td>1 (Compra inicial)</td>
+                    </tr>
+
+                    {% set sup = comum.supervisionado %}
+                    <tr>
+                        <td style="font-weight: 700; color: var(--cor-roxo);">🧠 LSTM (Walk-Forward)</td>
+                        {% if sup.erro %}
+                        <td colspan="4" style="color: var(--text-muted);">{{ sup.erro }}</td>
+                        {% else %}
+                        <td style="font-weight: 700; color: {{ '#3fb950' if sup.retorno_total_pct is not none and sup.retorno_total_pct >= 0 else '#f85149' }};">
+                            {{ sup.retorno_total_pct }}%
+                        </td>
+                        <td>
+                            {{ "{:.1f}%".format(sup.acuracia_direcional * 100) if sup.acuracia_direcional is not none else 'N/A' }}
+                        </td>
+                        <td style="color: var(--cor-vermelho);">{{ sup.max_drawdown_pct }}%</td>
+                        <td>{{ sup.n_operacoes or '—' }}</td>
+                        {% endif %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {% if sup and not sup.erro %}
+        <p style="color: var(--text-muted); font-size: 0.82rem; margin-top: 12px;">
+            LSTM: {{ sup.n_treino }} amostras de treino inicial, {{ sup.n_teste }} previsões
+            out-of-sample, {{ sup.n_refits }} re-treinos, sequência de {{ sup.seq_len }} candles.
+            Acurácia de classe majoritária (baseline): {{ "{:.1f}%".format(sup.acuracia_baseline_maioria * 100) if sup.acuracia_baseline_maioria is defined and sup.acuracia_baseline_maioria is not none else 'N/A' }}.
+        </p>
+        {% endif %}
+        {% elif comum and comum.erro %}
+        <div class="alert alert-warning">Janela comum indisponível: {{ comum.erro }}</div>
+        {% endif %}
+
+        <details style="margin-top: 18px;">
+            <summary style="cursor: pointer; color: var(--text-secondary); font-size: 0.88rem;">
+                Ver contexto do período completo (não usado na comparação justa)
+            </summary>
+            <div class="table-responsive" style="margin-top: 12px;">
+                <table class="table">
+                    <thead>
+                        <tr><th>Estratégia</th><th>Retorno no período completo</th><th>Acurácia</th></tr>
+                    </thead>
+                    <tbody>
+                        {% set crip_full = resultado_simulacao.criptoia %}
+                        {% set bnh_full = resultado_simulacao.buy_and_hold %}
+                        <tr>
+                            <td>CriptoIA (proxy)</td>
+                            <td>{{ crip_full.retorno_total_pct }}%</td>
+                            <td>{{ "{:.1f}%".format(crip_full.acuracia_direcional * 100) if crip_full.acuracia_direcional is not none else 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <td>Buy-and-Hold</td>
+                            <td>{{ bnh_full.retorno_total_pct }}%</td>
+                            <td>—</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Resultados consolidados da grade TCC (arquivo real salvo pelo CLI) -->
+{% if relatorio_tcc %}
+<div class="card" style="margin-bottom: 28px;">
+    <div style="margin-bottom: 14px;">
+        <h3 style="font-size: 1.15rem; font-weight: 600;">
+            🧪 Grade Completa do TCC — 4 ativos × 4 timeframes
+        </h3>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 14px;">
+        Métricas na janela comum out-of-sample (últimos 40%), com o LSTM real.
+        Fonte: <code>resultados/comparacao_tcc.json</code>.
+    </p>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Par</th>
+                    <th>TF</th>
+                    <th>CriptoIA (ret. / acur.)</th>
+                    <th>Buy &amp; Hold</th>
+                    <th>LSTM (ret. / acur.)</th>
+                    <th>Baseline LSTM</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in relatorio_tcc.resultados %}
+                {% set comum = item.periodo_comum %}
+                {% set crip = comum.criptoia if comum and not comum.erro else {} %}
+                {% set bnh = comum.buy_and_hold if comum and not comum.erro else {} %}
+                {% set sup = item.supervisionado or {} %}
+                <tr>
+                    <td style="font-weight: 700;">{{ item.par }}</td>
+                    <td><code>{{ item.intervalo }}</code></td>
+                    <td>
+                        {% if crip and not crip.erro %}
+                        <span style="color: {{ '#3fb950' if crip.retorno_total_pct is not none and crip.retorno_total_pct >= 0 else '#f85149' }}; font-weight: 600;">
+                            {{ crip.retorno_total_pct }}%
+                        </span>
+                        · {{ "{:.1f}%".format(crip.acuracia_direcional * 100) if crip.acuracia_direcional is not none else 'N/A' }}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if bnh and not bnh.erro %}
+                        <span style="color: {{ '#3fb950' if bnh.retorno_total_pct is not none and bnh.retorno_total_pct >= 0 else '#f85149' }}; font-weight: 600;">
+                            {{ bnh.retorno_total_pct }}%
+                        </span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if sup and not sup.erro %}
+                        <span style="color: {{ '#3fb950' if sup.retorno_total_pct is not none and sup.retorno_total_pct >= 0 else '#f85149' }}; font-weight: 600;">
+                            {{ sup.retorno_total_pct }}%
+                        </span>
+                        · {{ "{:.1f}%".format(sup.acuracia_direcional * 100) if sup.acuracia_direcional is not none else 'N/A' }}
+                        {% else %}
+                        <span style="color: var(--text-muted);">{{ sup.erro if sup else '—' }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--text-muted);">
+                        {{ "{:.1f}%".format(sup.acuracia_baseline_maioria * 100) if sup and sup.acuracia_baseline_maioria is defined and sup.acuracia_baseline_maioria is not none else '—' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning" style="margin-bottom: 28px;">
+    A grade completa ainda não foi gerada. Execute
+    <code>python principal.py --comparacao --grade</code> para criar
+    <code>resultados/comparacao_tcc.json</code> e visualizá-la aqui.
+</div>
+{% endif %}
+
+<!-- Experimento 2: backtesting multimodal real do Gemini -->
+{% if relatorio_gemini %}
+<div class="card" style="margin-bottom: 28px; border-left: 4px solid var(--cor-roxo);">
+    <div style="margin-bottom: 14px;">
+        <h3 style="font-size: 1.15rem; font-weight: 600;">
+            🤖 Backtesting Multimodal Real — Gemini (Experimento 2)
+        </h3>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 14px;">
+        Inferência real do Gemini sobre gráficos PNG históricos, com amostragem a cada
+        {{ relatorio_gemini.passo_amostragem_dias }} dias no timeframe diário.
+        A acurácia de prazo usa o campo <code>tempo_estimado</code> retornado pelo modelo.
+        Fonte: <code>resultados/backtesting_gemini_tcc.json</code>.
+    </p>
+
+    {% if resumo_gemini %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 16px;">
+        <div style="background: rgba(63, 185, 80, 0.08); border: 1px solid rgba(63, 185, 80, 0.25); border-radius: 6px; padding: 12px 14px;">
+            <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Critério 1 — acurácia de prazo &gt; 50% em ≥ 3/4</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: {{ '#3fb950' if resumo_gemini.criterio_acuracia else '#f85149' }};">
+                {{ 'ATENDIDO' if resumo_gemini.criterio_acuracia else 'NÃO ATENDIDO' }}
+                ({{ resumo_gemini.acuracia_ok }}/{{ resumo_gemini.total_ativos }})
+            </div>
+        </div>
+        <div style="background: rgba(248, 81, 73, 0.08); border: 1px solid rgba(248, 81, 73, 0.25); border-radius: 6px; padding: 12px 14px;">
+            <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Critério 2 — retorno não negativo em todos</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: {{ '#3fb950' if resumo_gemini.criterio_retorno else '#f85149' }};">
+                {{ 'ATENDIDO' if resumo_gemini.criterio_retorno else 'NÃO ATENDIDO' }}
+                ({{ resumo_gemini.retorno_ok }}/{{ resumo_gemini.total_ativos }})
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Par</th>
+                    <th>Amostras</th>
+                    <th>Comp. / Vend. / Mant.</th>
+                    <th>Acur. t+1</th>
+                    <th>Acur. prazo</th>
+                    <th>Alvo atingido</th>
+                    <th>Retorno Gemini</th>
+                    <th>Buy &amp; Hold</th>
+                    <th>Concord. proxy</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in relatorio_gemini.resultados %}
+                {% if 'erro' not in item %}
+                {% set dist = item.distribuicao_acoes %}
+                {% set bh = item.buy_and_hold or {} %}
+                <tr>
+                    <td style="font-weight: 700;">{{ item.par }}</td>
+                    <td>{{ item.total_amostras }} <small style="color: var(--text-muted);">({{ item.intervalo }})</small></td>
+                    <td>{{ dist.COMPRAR }} / {{ dist.VENDER }} / {{ dist.MANTER }}</td>
+                    <td>{{ "{:.1f}%".format(item.acuracia_t1_pct) if item.acuracia_t1_pct is not none else 'N/A' }}</td>
+                    <td style="font-weight: 600; color: {{ '#3fb950' if item.acuracia_prazo_estimado_pct is not none and item.acuracia_prazo_estimado_pct > 50 else '#f85149' }};">
+                        {{ "{:.1f}%".format(item.acuracia_prazo_estimado_pct) if item.acuracia_prazo_estimado_pct is not none else 'N/A' }}
+                    </td>
+                    <td>{{ "{:.1f}%".format(item.taxa_atingimento_alvo_pct) if item.taxa_atingimento_alvo_pct is not none else 'N/A' }}</td>
+                    <td style="font-weight: 600; color: {{ '#3fb950' if item.retorno_acumulado_pct is not none and item.retorno_acumulado_pct >= 0 else '#f85149' }};">
+                        {{ "{:+.2f}%".format(item.retorno_acumulado_pct) if item.retorno_acumulado_pct is not none else 'N/A' }}
+                    </td>
+                    <td style="color: {{ '#3fb950' if bh.retorno_total_pct is not none and bh.retorno_total_pct >= 0 else '#f85149' }};">
+                        {{ "{:+.2f}%".format(bh.retorno_total_pct) if bh.retorno_total_pct is not none else 'N/A' }}
+                    </td>
+                    <td>{{ "{:.1f}%".format(item.taxa_concordancia_proxy_pct) if item.taxa_concordancia_proxy_pct is not none else 'N/A' }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--cor-amarela); background: rgba(210, 153, 34, 0.08); color: var(--text-secondary); font-size: 0.82rem; line-height: 1.6;">
+        <strong>Leitura metodológica:</strong> o Experimento 2 cobre 4 ativos no timeframe diário
+        ({{ relatorio_gemini.passo_amostragem_dias }} dias por amostra), não a grade 4×4 completa.
+        Ele continua sendo o resultado oficial do Gemini. O complemento exploratório em <code>1h</code>/<code>4h</code>
+        foi executado em uma janela curta separada e aparece no card seguinte; ele não altera este resultado.
+        O <code>1w</code> tem apenas 78 candles, abaixo do mínimo de 110, e permanece fora do replay real.
+        O retorno é composto por decisão amostral e horizontes de 7 a 14 dias podem se sobrepor;
+        não há custos de transação. O Buy-and-Hold é calculado na mesma janela efetiva de cada par.
+    </div>
+</div>
+{% endif %}
+
+<!-- Experimento 3: complemento exploratório intraday -->
+{% if relatorio_gemini_intraday %}
+<div class="card" style="margin-bottom: 28px; border-left: 4px solid var(--cor-azul);">
+    <div style="margin-bottom: 14px;">
+        <h3 style="font-size: 1.15rem; font-weight: 600;">
+            🧪 Complemento Exploratório — Gemini 1h/4h (Experimento 3)
+        </h3>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 14px;">
+        Inferência real do Gemini em janela curta, com amostragem a cada
+        {{ relatorio_gemini_intraday.passo_amostragem_dias }} dias.
+        Período: {{ relatorio_gemini_intraday.periodo.inicio[:10] }} a
+        {{ relatorio_gemini_intraday.periodo.fim[:10] }}.
+        Este experimento é <strong>exploratório</strong> e não substitui o resultado oficial em <code>1d</code>.
+        Fonte: <code>resultados/backtesting_gemini_intraday_tcc.json</code>.
+    </p>
+
+    {% if resumo_gemini_intraday %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 12px; margin-bottom: 16px;">
+        <div style="background: rgba(88, 166, 255, 0.08); border: 1px solid rgba(88, 166, 255, 0.25); border-radius: 6px; padding: 12px 14px;">
+            <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Combinações</div>
+            <div style="font-size: 1.15rem; font-weight: 700;">{{ resumo_gemini_intraday.total }}</div>
+        </div>
+        <div style="background: rgba(63, 185, 80, 0.08); border: 1px solid rgba(63, 185, 80, 0.25); border-radius: 6px; padding: 12px 14px;">
+            <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Acurácia de prazo &gt; 50%</div>
+            <div style="font-size: 1.15rem; font-weight: 700;">{{ resumo_gemini_intraday.acuracia_ok }}/{{ resumo_gemini_intraday.total }}</div>
+        </div>
+        <div style="background: rgba(210, 153, 34, 0.08); border: 1px solid rgba(210, 153, 34, 0.25); border-radius: 6px; padding: 12px 14px;">
+            <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Retorno não negativo</div>
+            <div style="font-size: 1.15rem; font-weight: 700;">{{ resumo_gemini_intraday.retorno_ok }}/{{ resumo_gemini_intraday.total }}</div>
+        </div>
+        <div style="background: rgba(248, 81, 73, 0.08); border: 1px solid rgba(248, 81, 73, 0.25); border-radius: 6px; padding: 12px 14px;">
+            <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">Superou o Buy &amp; Hold</div>
+            <div style="font-size: 1.15rem; font-weight: 700;">{{ resumo_gemini_intraday.bh_ok }}/{{ resumo_gemini_intraday.total }}</div>
+        </div>
+    </div>
+    <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 14px;">
+        Por timeframe:
+        {% for tf in resumo_gemini_intraday.por_timeframe %}
+        <code>{{ tf.intervalo }}</code> — acurácia {{ tf.acuracia_ok }}/{{ tf.total }},
+        retorno não negativo {{ tf.retorno_ok }}/{{ tf.total }}{% if not loop.last %}; {% endif %}
+        {% endfor %}.
+    </p>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>TF</th>
+                    <th>Par</th>
+                    <th>Amostras</th>
+                    <th>Comp. / Vend. / Mant.</th>
+                    <th>Acur. t+1</th>
+                    <th>Acur. prazo</th>
+                    <th>Alvo atingido</th>
+                    <th>Retorno Gemini</th>
+                    <th>Buy &amp; Hold</th>
+                    <th>Concord. proxy</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in relatorio_gemini_intraday.resultados %}
+                {% if 'erro' not in item %}
+                {% set dist = item.distribuicao_acoes %}
+                {% set bh = item.buy_and_hold or {} %}
+                <tr>
+                    <td><code>{{ item.intervalo }}</code></td>
+                    <td style="font-weight: 700;">{{ item.par }}</td>
+                    <td>{{ item.total_amostras }}</td>
+                    <td>{{ dist.COMPRAR }} / {{ dist.VENDER }} / {{ dist.MANTER }}</td>
+                    <td>{{ "{:.1f}%".format(item.acuracia_t1_pct) if item.acuracia_t1_pct is not none else 'N/A' }}</td>
+                    <td style="font-weight: 600; color: {{ '#3fb950' if item.acuracia_prazo_estimado_pct is not none and item.acuracia_prazo_estimado_pct > 50 else '#f85149' }};">
+                        {{ "{:.1f}%".format(item.acuracia_prazo_estimado_pct) if item.acuracia_prazo_estimado_pct is not none else 'N/A' }}
+                    </td>
+                    <td>{{ "{:.1f}%".format(item.taxa_atingimento_alvo_pct) if item.taxa_atingimento_alvo_pct is not none else 'N/A' }}</td>
+                    <td style="font-weight: 600; color: {{ '#3fb950' if item.retorno_acumulado_pct is not none and item.retorno_acumulado_pct >= 0 else '#f85149' }};">
+                        {{ "{:+.2f}%".format(item.retorno_acumulado_pct) if item.retorno_acumulado_pct is not none else 'N/A' }}
+                    </td>
+                    <td style="color: {{ '#3fb950' if bh.retorno_total_pct is not none and bh.retorno_total_pct >= 0 else '#f85149' }};">
+                        {{ "{:+.2f}%".format(bh.retorno_total_pct) if bh.retorno_total_pct is not none else 'N/A' }}
+                    </td>
+                    <td>{{ "{:.1f}%".format(item.taxa_concordancia_proxy_pct) if item.taxa_concordancia_proxy_pct is not none else 'N/A' }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--cor-amarela); background: rgba(210, 153, 34, 0.08); color: var(--text-secondary); font-size: 0.82rem; line-height: 1.6;">
+        <strong>Leitura metodológica:</strong> o Experimento 3 cobre o período exploratório
+        exibido acima ({{ relatorio_gemini_intraday.periodo.inicio[:10] }} a
+        {{ relatorio_gemini_intraday.periodo.fim[:10] }}). O número de decisões por par é o
+        exibido na coluna <em>Amostras</em>; a primeira decisão ocorre após 90 candles de
+        aquecimento. O retorno é composto por decisão amostral; horizontes podem se sobrepor
+        e não há custos de transação. Os critérios do TCC são definidos para 4 ativos, não
+        para 8 combinações; por isso os contadores acima são descritivos e não substituem a
+        avaliação oficial do Experimento 2.
+    </div>
+</div>
+{% endif %}
+
+<!-- Histórico Real de Backtesting -->
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
+        <h3 style="font-size: 1.15rem; font-weight: 600;">
+            📚 Histórico de Backtesting (resultados reais salvos)
+        </h3>
+        <span style="color: var(--text-muted); font-size: 0.82rem;">{{ historico_backtest|length }} registro(s)</span>
+    </div>
+
+    {% if historico_backtest %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Par</th>
+                    <th>TF</th>
+                    <th>CriptoIA</th>
+                    <th>Buy &amp; Hold</th>
+                    <th>LSTM</th>
+                    <th>Período comum</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in historico_backtest %}
+                {% set comum = item.periodo_comum %}
+                {% set crip = comum.criptoia if comum and not comum.erro else item.criptoia %}
+                {% set bnh = comum.buy_and_hold if comum and not comum.erro else item.buy_and_hold %}
+                {% set sup = item.supervisionado %}
+                <tr>
+                    <td style="color: var(--text-muted); font-size: 0.8rem; white-space: nowrap;">{{ item.data_execucao }}</td>
+                    <td style="font-weight: 700;">{{ item.par }}</td>
+                    <td><code>{{ item.intervalo }}</code></td>
+                    {% if item.erro %}
+                    <td colspan="4" style="color: var(--cor-vermelho); font-size: 0.85rem;">{{ item.erro }}</td>
+                    {% else %}
+                    <td>
+                        {% if crip and not crip.erro %}
+                        <span style="color: {{ '#3fb950' if crip.retorno_total_pct is not none and crip.retorno_total_pct >= 0 else '#f85149' }}; font-weight: 600;">
+                            {{ crip.retorno_total_pct }}%
+                        </span>
+                        <br><small style="color: var(--text-muted);">acur. {{ "{:.1f}%".format(crip.acuracia_direcional * 100) if crip.acuracia_direcional is not none else 'N/A' }}</small>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if bnh and not bnh.erro %}
+                        <span style="color: {{ '#3fb950' if bnh.retorno_total_pct is not none and bnh.retorno_total_pct >= 0 else '#f85149' }}; font-weight: 600;">
+                            {{ bnh.retorno_total_pct }}%
+                        </span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if sup and not sup.erro %}
+                        <span style="color: {{ '#3fb950' if sup.retorno_total_pct is not none and sup.retorno_total_pct >= 0 else '#f85149' }}; font-weight: 600;">
+                            {{ sup.retorno_total_pct }}%
+                        </span>
+                        <br><small style="color: var(--text-muted);">acur. {{ "{:.1f}%".format(sup.acuracia_direcional * 100) if sup.acuracia_direcional is not none else 'N/A' }}</small>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-size: 0.8rem;">{{ sup.erro if sup else '—' }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--text-muted); font-size: 0.8rem;">
+                        {% if comum and not comum.erro %}
+                            {{ comum.data_inicio[:10] }} → {{ comum.data_fim[:10] }}
+                        {% else %}—{% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 44px; color: var(--text-muted);">
+        <p style="font-size: 1.05rem; margin-bottom: 8px;">Nenhum backtesting executado ainda.</p>
+        <p style="font-size: 0.85rem;">
+            Execute uma simulação acima nos pares e timeframes do TCC. Os resultados reais
+            ficarão salvos e serão exibidos nesta tabela.
+        </p>
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.8rem; line-height: 1.6;">
+        <strong>Pares do experimento acadêmico:</strong> {{ pares_tcc|join(' · ') }}<br>
+        <strong>Timeframes:</strong> {{ timeframes_tcc|join(' · ') }}<br>
+        Para reproduzir a grade completa fora da interface:
+        <code>python principal.py --comparacao --grade</code>
+    </div>
+</div>
+{% endblock %}

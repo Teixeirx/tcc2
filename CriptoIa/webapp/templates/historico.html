@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico de Análises — CriptoIA{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+    <div>
+        <h1 class="page-title" style="font-size: 1.8rem; margin-bottom: 6px;">Histórico de Análises</h1>
+        <p class="page-subtitle">Registro de todas as análises técnicas e recomendações multimodais geradas pelo sistema.</p>
+    </div>
+    <a href="{{ url_for('analise') }}" class="btn btn-primary">+ Executar Nova Análise</a>
+</div>
+
+<div class="card">
+    {% if analises %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Data / Hora</th>
+                    <th>Par</th>
+                    <th>Timeframe</th>
+                    <th>Preço de Referência</th>
+                    <th>Variação 24h</th>
+                    <th>Recomendação IA</th>
+                    <th>Preço Alvo</th>
+                    <th>Tempo</th>
+                    <th>Justificativa Técnica</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in analises %}
+                <tr>
+                    <td style="color: var(--text-muted);">{{ a.id }}</td>
+                    <td style="color: var(--text-muted); font-size: 0.82rem; white-space: nowrap;">{{ a.data }}</td>
+                    <td style="font-weight: 700;">{{ a.par }}</td>
+                    <td><code>{{ a.intervalo }}</code></td>
+                    <td>${{ "{:,.2f}".format(a.preco_atual) if a.preco_atual else '—' }}</td>
+                    <td style="color: {{ '#3fb950' if a.variacao_24h and a.variacao_24h >= 0 else '#f85149' }}; font-weight: 600;">
+                        {% if a.variacao_24h is not none %}
+                            {{ '+' if a.variacao_24h >= 0 else '' }}{{ a.variacao_24h }}%
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge-acao badge-{{ a.acao.lower() }}">{{ a.acao }}</span>
+                    </td>
+                    <td style="color: var(--cor-azul); font-weight: 600;">{{ a.preco_alvo or '—' }}</td>
+                    <td>{{ a.tempo_estimado or '—' }}</td>
+                    <td style="color: var(--text-secondary); max-width: 380px; font-size: 0.85rem; line-height: 1.4;">
+                        {{ a.justificativa }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 48px; color: var(--text-muted);">
+        <p style="font-size: 1.05rem; margin-bottom: 8px;">Nenhum registro no histórico.</p>
+        <p style="font-size: 0.85rem;">As análises realizadas na aba "Nova Análise" serão automaticamente salvas e listadas aqui.</p>
+        <a href="{{ url_for('analise') }}" class="btn btn-primary" style="margin-top: 16px;">Iniciar Análise</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
